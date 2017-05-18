@@ -27,6 +27,8 @@
   },
   "dependencies": {
     "ecad": "^0.2.0",
+    "memcached": "^2.2.2",
+    "optional-js": "^1.2.1",
     "rxjs": "^5.4.0"
   }
 }
