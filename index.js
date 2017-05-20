@@ -24,11 +24,18 @@ console.log(HerdCacheClient.config);
 
 
 var single = HerdCacheClient.get('mykey');
-console.log("troublelelkjlkjlkj" + single);
+console.log("Got Object" + single);
 single.subscribe((item) => console.log("ITEM: " + item),null,()=>console.log("complete1"));
 single.subscribe((item) => console.log("ITEM2: " + item),null,()=>console.log("complete2"));
 single.subscribe((item) => console.log("ITEM3: " + item),null,()=>console.log("complete3"));
 single.subscribe((item) => console.log("ITEM4: " + item),null,()=>console.log("complete4"));
+console.log("After Subs" + single);
+
+setTimeout(() => {
+    var single2 = HerdCacheClient.get('mykey');
+    single2.subscribe((item) => console.log("ITEM5: " + item),null,()=>console.log("complete5"));
+},1000);
+
 console.log("after subscribe init")
 setTimeout(() => {
     single.subscribe((item) => console.log("tiem: " + item)
