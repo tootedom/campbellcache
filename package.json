@@ -25,7 +25,9 @@
   "devDependencies": {
     "binford-logger": "0.0.3",
     "eslint": "^3.19.0",
-    "mocha": "^3.4.1"
+    "memcached-mock": "^0.1.0",
+    "mocha": "^3.4.1",
+    "proxyquire": "^1.8.0"
   },
   "dependencies": {
     "binford-slf4j": "0.0.1",
