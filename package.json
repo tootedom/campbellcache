@@ -23,10 +23,12 @@
   },
   "homepage": "https://github.com/tootedom/herdcache-js#readme",
   "devDependencies": {
+    "binford-logger": "0.0.3",
     "eslint": "^3.19.0",
     "mocha": "^3.4.1"
   },
   "dependencies": {
+    "binford-slf4j": "0.0.1",
     "ecad": "^0.2.0",
     "memcached": "^2.2.2",
     "optional-js": "^1.2.1",

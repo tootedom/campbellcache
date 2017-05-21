@@ -1,7 +1,21 @@
+var slf4j = require('binford-slf4j');
+var binfordLogger = require('binford-logger');
+
+slf4j.setLoggerFactory(binfordLogger.loggerFactory);
+slf4j.loadConfig({
+    level: slf4j.LEVELS.DEBUG,
+    appenders:
+	    [{
+		    appender: binfordLogger.getDefaultAppender()
+	    }]
+});
+
+
 var assert = require('assert');
 var AutodiscoveryServer = require('./autodiscovery-server');
 var AutoDiscovery = require('../lib/autodiscovery');
 var fs = require('fs');
+
 
 describe('autodiscovery', function() {
     var testServer;
