@@ -40,10 +40,11 @@ AutodiscoveryServer.prototype.close = function() {
 
 function sendResponse(obj) {
     return function(e) {
+        var num = obj.num;
         obj.num = obj.num + 1;
         console.log('sending autodiscovery response');
-        e.sock.write(obj.responses[obj.num%obj.responsesSize])
-        e.sock.pipe(e.sock)
+        e.sock.write(obj.responses[num%obj.responsesSize]);
+        e.sock.pipe(e.sock);
     }
 }
 
