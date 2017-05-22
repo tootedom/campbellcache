@@ -18,9 +18,18 @@ describe('ObservableMemcached', function() {
   var cache = new cached(true);
   console.log(cache);
   cache.client.set("key","kkkkkk",1000,function() {});
-cache.client.get("key", function(err, data) {
+  cache.client.get("key", function(err, data) {
         console.log(data); // prints: world!
-      });
+  });
+
+  const originalGet = memcachedMock.prototype.get;
+  const get = function(key,cb) {
+    setTimeout(() => {
+      originalGet.call(this,key,cb);
+    },1000);
+  }
+  memcachedMock.prototype.get = get
+
   describe("Gets", function() {
     it("Should return an observable from get request",function(done) {
       var obs = cache.get("key");
