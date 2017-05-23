@@ -24,6 +24,7 @@
   "homepage": "https://github.com/tootedom/herdcache-js#readme",
   "devDependencies": {
     "binford-logger": "0.0.3",
+    "chai": "^3.5.0",
     "eslint": "^3.19.0",
     "memcached-mock": "^0.1.0",
     "mocha": "^3.4.1",

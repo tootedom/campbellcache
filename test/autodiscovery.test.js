@@ -1,5 +1,7 @@
 var slf4j = require('binford-slf4j');
 var binfordLogger = require('binford-logger');
+var chai = require('chai');
+var expect = chai.expect;
 
 slf4j.setLoggerFactory(binfordLogger.loggerFactory);
 slf4j.loadConfig({
@@ -18,6 +20,7 @@ var fs = require('fs');
 
 
 describe('autodiscovery', function() {
+    process.env.EC_CONFIG_URL = "";
     var testServer;
     var Autodiscovery;
 
@@ -35,7 +38,8 @@ describe('autodiscovery', function() {
             testServer = new AutodiscoveryServer(payload);
 
             Autodiscovery = new AutoDiscovery({
-                intervalInMs: 1000
+                intervalInMs: 1000,
+                url: "127.0.0.1:11211"
             });
 
             var hosts;
@@ -57,7 +61,9 @@ describe('autodiscovery', function() {
             testServer = new AutodiscoveryServer(payload);
 
             Autodiscovery = new AutoDiscovery({
-                intervalInMs: 1000
+                intervalInMs: 1000,
+                url: "127.0.0.1:11211"
+
             });
 
             var hosts;
@@ -101,7 +107,8 @@ describe('autodiscovery', function() {
             testServer = new AutodiscoveryServer(payload);
 
             Autodiscovery = new AutoDiscovery({
-                intervalInMs: 500
+                intervalInMs: 500,
+                url: "127.0.0.1:11211"
             });
 
             var hosts;
@@ -121,5 +128,21 @@ describe('autodiscovery', function() {
                 done();
             },4000);
         });
+
+        it("Throws an error if no url is provided to autodiscovery",
+            function(done) {
+                var error
+                try {
+                    Autodiscovery = new AutoDiscovery({
+                        intervalInMs: 500
+                    });
+                } catch(e) {
+                    error = e;
+                }
+
+                expect(error).to.be.an.instanceof(Error);
+                done();
+            }
+        );
     });
 });
