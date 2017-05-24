@@ -26,8 +26,8 @@ describe('autodiscovery', function() {
 
     afterEach(function() {
         console.log("Shutting down");
-        testServer.close();
-        Autodiscovery.close();
+        testServer.shutdown();
+        Autodiscovery.shutdown();
     });
 
     describe("Notified Of Hosts", function() {

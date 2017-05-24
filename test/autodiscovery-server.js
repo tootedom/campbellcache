@@ -33,7 +33,7 @@ function AutodiscoveryServer(strings) {
 
 }
 
-AutodiscoveryServer.prototype.close = function() {
+AutodiscoveryServer.prototype.shutdown = function() {
     this.server.close();
     this.requests_.complete();
 }
