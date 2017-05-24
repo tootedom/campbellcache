@@ -24,7 +24,7 @@ describe('ObservableMemcached', function() {
     })
 
     testAutodiscoveryServer = new AutodiscoveryServer(fs.readFileSync(__dirname + '/fixtures/single', 'utf8'));
-    ObservableMemcached = new InMemoryObservableMemcached(true);
+    ObservableMemcached = new InMemoryObservableMemcached(true,["blah"]);
     HerdCache.prototype._observableMemcacheFactory = function(hosts,options) {
       console.log("Calling Factory");
       return ObservableMemcached;
@@ -45,12 +45,14 @@ describe('ObservableMemcached', function() {
         // add a delay to the test
         monkeyPatchGet(1000,memcachedMock);
         this.timeout(5000);
+        console.log("mocking: " + memcachedMock.prototype.get);
 
         //
         // need to wait for autodiscovery to have run first
         // to have created the memcached client with the memcachedMock
         //
         setTimeout(() => {
+          console.log(memcachedMock.prototype.get);
           var obs = herdcache.get(key);
           obs.subscribe(function(retrievedValue) {
             console.log("value got: "+ retrievedValue);
@@ -85,8 +87,10 @@ describe('ObservableMemcached', function() {
 
 function monkeyPatchGet(timeout,mock) {
   const originalGet = mock.prototype.get;
+  console.log("monkey patching:" + originalGet);
   const get = function(key,cb) {
     setTimeout(() => {
+      console.log("lkjlkjlkj");
       originalGet.call(this,key,cb);
     },1000);
   }
