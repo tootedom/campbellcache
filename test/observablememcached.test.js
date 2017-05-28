@@ -1,7 +1,6 @@
 var assert = require('assert');
 
 var proxyquire = require('proxyquire');
-//var memcachedMock = require('memcached-mock');
 
 describe('ObservableMemcached', function() {
   var memcachedMock;
@@ -11,7 +10,7 @@ describe('ObservableMemcached', function() {
   beforeEach(function() {
     memcachedMock = require('memcached-mock');
     cached = proxyquire('../lib/observable-memcached', {memcached: memcachedMock});
-    cache = new cached(true);
+    cache = new cached(true,["bob"]);
     // Set key to BOB for 10 mins
     cache.client.set("key","BOB",600,function() {});
   });
@@ -38,6 +37,7 @@ describe('ObservableMemcached', function() {
         },500);
 
         obs.subscribe(function(value) {
+          console.log(value);
           assert.equal("BOB",value.value());
           observerCount += 1;
         });

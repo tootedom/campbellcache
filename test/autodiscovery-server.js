@@ -25,7 +25,6 @@ function AutodiscoveryServer(strings) {
     console.log(this.responsesSize)
 
     this.server = net.createServer((socket) => {
-        console.log("request");
         this.requests_.next({ sock: socket });
     }).listen(11211, '127.0.0.1', () => {
         console.log(`Server running at http://127.0.0.1:11211/`);
@@ -42,7 +41,6 @@ function sendResponse(obj) {
     return function(e) {
         var num = obj.num;
         obj.num = obj.num + 1;
-        console.log('sending autodiscovery response');
         e.sock.write(obj.responses[num%obj.responsesSize]);
         e.sock.pipe(e.sock);
     }

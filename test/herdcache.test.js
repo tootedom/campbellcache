@@ -1,5 +1,6 @@
 var slf4j = require('binford-slf4j');
 var binfordLogger = require('binford-logger');
+
 var chai = require('chai');
 var expect = chai.expect;
 
@@ -23,11 +24,13 @@ var AutodiscoveryServer = require('./autodiscovery-server');
 describe('ObservableMemcached', function() {
   var memcachedMock;
   var InMemoryObservableMemcached;
-  var ObservableMemcached;
+  var EnabledObservableMemcached;
+  var DisabledObservableMemcached;
   var herdcache;
   var testAutodiscoveryServer;
   const key = "key";
   const value = "BOB";
+  var cacheEnabled = true;
 
   beforeEach(function() {
     memcachedMock = require('memcached-mock');
@@ -39,14 +42,20 @@ describe('ObservableMemcached', function() {
     })
 
     testAutodiscoveryServer = new AutodiscoveryServer(fs.readFileSync(__dirname + '/fixtures/single', 'utf8'));
-    ObservableMemcached = new InMemoryObservableMemcached(true,["blah"]);
+    EnabledObservableMemcached = new InMemoryObservableMemcached(true,["blah"]);
+    DisabledObservableMemcached = new InMemoryObservableMemcached(false,["blah"]);
     HerdCache.prototype._observableMemcacheFactory = function(hosts,options) {
-      console.log("Calling Factory");
-      return ObservableMemcached;
+      if(cacheEnabled) {
+        console.log("returning enabled cache");
+        return EnabledObservableMemcached;
+      } else {
+        console.log("returning disabled cache");
+        return DisabledObservableMemcached;
+      }
     }
 
     // Set key to BOB for 10 mins
-    ObservableMemcached.client.set(key,value,600,function() {});
+    EnabledObservableMemcached.client.set(key,value,600,function() {});
   });
 
   afterEach(function() {
@@ -54,60 +63,101 @@ describe('ObservableMemcached', function() {
     herdcache.shutdown();
   });
 
-  describe("Gets", function() {
+  describe("Get", function() {
     it("Returns observable from get request that takes time to fulfil",
       function(done) {
         // add a delay to the test
-        monkeyPatchGet(1000,memcachedMock);
+        monkeyPatchGet(2000,memcachedMock);
         this.timeout(5000);
-        console.log("mocking: " + memcachedMock.prototype.get);
 
+        var observableCalled = 0;
         //
         // need to wait for autodiscovery to have run first
         // to have created the memcached client with the memcachedMock
         //
         setTimeout(() => {
-          console.log(memcachedMock.prototype.get);
           var obs = herdcache.get(key);
           obs.subscribe(function(retrievedValue) {
-            console.log("value got: "+ retrievedValue);
             assert.equal("BOB",retrievedValue.value());
-            done();
+            observableCalled++;
+          });
+
+          // Check for herdcache throttle returning same observable
+          var obs2 = herdcache.get(key);
+          var obs3 = herdcache.get('NOSUCHKEY');
+          assert.equal(obs,obs2)
+          assert.notEqual(obs,obs3)
+
+          obs2.subscribe(function(retrievedValue) {
+            assert.equal("BOB",retrievedValue.value());
+            observableCalled++;
           });
         },500)
 
-        // obs.subscribe(function(value) {
-        //   assert.equal("BOB",value.value());
-        //   observerCount += 1;
-        // });
 
-        // obs.subscribe(function(value) {
-        //   assert.equal("BOB",value.value());
-        //   assert.equal("key",value.getKey());
-        //   assert.equal("key",value.key);
-        //   assert.equal(true,value.isFromCache());
-        //   assert.equal(true,value.hasValue());
-        //   assert.equal(false,value.isEmpty());
-        //   observerCount += 1;
-        // });
+        setTimeout(() => {
+          assert.equal(2,observableCalled);
+          done();
+        },3000);
 
-        // setTimeout(() => {
-        //   assert.equal(3,observerCount);
-        //   done();
-        // },1500);
     });
 
+    it("Returns observable that returns an empty Cache Item",
+      function(done) {
+        // add a delay to the test
+        monkeyPatchGet(2000,memcachedMock);
+        this.timeout(5000);
+
+        var observableCalled = 0;
+        //
+        // need to wait for autodiscovery to have run first
+        // to have created the memcached client with the memcachedMock
+        //
+        setTimeout(() => {
+          var obs = herdcache.get("NO_SUCH_THING");
+          obs.subscribe(function(retrievedValue) {
+            assert.equal(null,retrievedValue.value());
+            assert.equal(false,retrievedValue.isFromCache());
+            done();
+          });
+
+        },500)
+    });
+
+    it("Returns observable that returns an empty Cache Item, when cache is not enabled",
+      function(done) {
+        cacheEnabled = false;
+        // add a delay to the test
+        monkeyPatchGet(2000,memcachedMock);
+        this.timeout(5000);
+
+        var observableCalled = 0;
+        //
+        // need to wait for autodiscovery to have run first
+        // to have created the memcached client with the memcachedMock
+        //
+        setTimeout(() => {
+          var obs = herdcache.get("NO_SUCH_THING");
+          obs.subscribe(function(retrievedValue) {
+            assert.equal(null,retrievedValue.value());
+            assert.equal(false,retrievedValue.isFromCache());
+            done();
+          });
+
+        },500)
+    });    
+
   });
+
+
 });
 
 function monkeyPatchGet(timeout,mock) {
   const originalGet = mock.prototype.get;
-  console.log("monkey patching:" + originalGet);
   const get = function(key,cb) {
     setTimeout(() => {
-      console.log("lkjlkjlkj");
       originalGet.call(this,key,cb);
-    },1000);
+    },timeout);
   }
   mock.prototype.get = get
 }
