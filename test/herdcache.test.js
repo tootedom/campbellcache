@@ -23,6 +23,7 @@ var AutodiscoveryServer = require('./autodiscovery-server');
 
 describe('ObservableMemcached', function() {
   var memcachedMock;
+  var memcachedMockOriginalGet;
   var InMemoryObservableMemcached;
   var EnabledObservableMemcached;
   var DisabledObservableMemcached;
@@ -56,11 +57,13 @@ describe('ObservableMemcached', function() {
 
     // Set key to BOB for 10 mins
     EnabledObservableMemcached.client.set(key,value,600,function() {});
+    memcachedMockOriginalGet = memcachedMock.prototype.get;
   });
 
   afterEach(function() {
     testAutodiscoveryServer.shutdown();
     herdcache.shutdown();
+    memcachedMock.prototype.get = memcachedMockOriginalGet;
   });
 
   describe("Get", function() {
