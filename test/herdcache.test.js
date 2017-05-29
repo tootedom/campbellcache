@@ -1,18 +1,6 @@
-var slf4j = require('binford-slf4j');
-var binfordLogger = require('binford-logger');
-
+const Logging = require('./testlogging')();
 var chai = require('chai');
 var expect = chai.expect;
-
-slf4j.setLoggerFactory(binfordLogger.loggerFactory);
-slf4j.loadConfig({
-    level: slf4j.LEVELS.DEBUG,
-    appenders:
-	    [{
-		    appender: binfordLogger.getDefaultAppender()
-	    }]
-});
-
 
 var assert = require('assert');
 var proxyquire = require('proxyquire');
