@@ -1,4 +1,4 @@
-const Logging = require('./testlogging')();
+const Logging = require('./testlogging');
 var assert = require('assert');
 
 var proxyquire = require('proxyquire');
@@ -57,7 +57,9 @@ describe('ObservableMemcached', function() {
           observerCount += 1;
         });
 
+
         setTimeout(() => {
+          assert.equal(1,memcachedMock.prototype.getCalled());
           assert.equal(3,observerCount);
           done();
         },1500);
@@ -86,10 +88,17 @@ describe('ObservableMemcached', function() {
 
 function monkeyPatchGet(timeout,mock) {
   const originalGet = mock.prototype.get;
+  var called = 0;
   const get = function(key,cb) {
+    called++;
     setTimeout(() => {
       originalGet.call(this,key,cb);
     },timeout);
   }
+
+  mock.prototype.getCalled = function() {
+    return called;
+  }
+
   mock.prototype.get = get
 }

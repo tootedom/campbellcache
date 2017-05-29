@@ -1,4 +1,4 @@
-const Logging = require('./testlogging')();
+const Logging = require('./testlogging');
 var chai = require('chai');
 var expect = chai.expect;
 
@@ -58,7 +58,7 @@ describe('ObservableMemcached', function() {
     it("Returns observable from get request that takes time to fulfil",
       function(done) {
         // add a delay to the test
-        monkeyPatchGet(2000,memcachedMock);
+        monkeyPatchGet(1000,memcachedMock);
         this.timeout(5000);
 
         var observableCalled = 0;
@@ -66,11 +66,15 @@ describe('ObservableMemcached', function() {
         // need to wait for autodiscovery to have run first
         // to have created the memcached client with the memcachedMock
         //
+
+        var cacheItem = null;
+        var obs = null;
         setTimeout(() => {
-          var obs = herdcache.get(key);
+          obs = herdcache.get(key);
           obs.subscribe(function(retrievedValue) {
             assert.equal("BOB",retrievedValue.value());
             observableCalled++;
+            cacheItem = retrievedValue;
           });
 
           // Check for herdcache throttle returning same observable
@@ -85,6 +89,13 @@ describe('ObservableMemcached', function() {
           });
         },500)
 
+        // Ensure calculated observable value is returned,
+        // and cache not recalled.
+        setTimeout(() => {
+          obs.subscribe(function(val) {
+            assert.equal(val,cacheItem);
+          });
+        },1500);
 
         setTimeout(() => {
           assert.equal(2,observableCalled);
@@ -119,7 +130,7 @@ describe('ObservableMemcached', function() {
       function(done) {
         cacheEnabled = false;
         // add a delay to the test
-        monkeyPatchGet(2000,memcachedMock);
+        monkeyPatchGet(1000,memcachedMock);
         this.timeout(5000);
 
         var observableCalled = 0;
@@ -127,16 +138,31 @@ describe('ObservableMemcached', function() {
         // need to wait for autodiscovery to have run first
         // to have created the memcached client with the memcachedMock
         //
+
+        var obs = null;
+        var cacheItem = null;
         setTimeout(() => {
-          var obs = herdcache.get("NO_SUCH_THING");
+          obs = herdcache.get("NO_SUCH_THING");
           obs.subscribe(function(retrievedValue) {
+            cacheItem = retrievedValue;
             assert.equal(null,retrievedValue.value());
             assert.equal(false,retrievedValue.isFromCache());
-            done();
           });
-
         },500)
-    });    
+
+        setTimeout(() => {
+           obs.subscribe(function(retrievedValue) {
+            assert.equal(null,retrievedValue.value());
+            assert.equal(false,retrievedValue.isFromCache());
+            assert.equal(cacheItem, retrievedValue);
+          });
+        },1500);
+
+        setTimeout(() => {
+          assert.equal(1,herdcache.metrics._getMethodCounter('get').printObj()['count']);
+          done();
+        },2000);
+    });
 
   });
 
@@ -145,10 +171,17 @@ describe('ObservableMemcached', function() {
 
 function monkeyPatchGet(timeout,mock) {
   const originalGet = mock.prototype.get;
+  var called = 0;
   const get = function(key,cb) {
+    called++;
     setTimeout(() => {
       originalGet.call(this,key,cb);
     },timeout);
   }
+
+  mock.prototype.getCalled = function() {
+    return called;
+  }
+
   mock.prototype.get = get
 }

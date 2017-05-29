@@ -1,4 +1,4 @@
-const Logging = require('./testlogging')();
+const Logging = require('./testlogging');
 
 var chai = require('chai');
 var expect = chai.expect;
