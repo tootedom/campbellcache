@@ -124,10 +124,65 @@ describe('ObservableMemcached', function() {
 
         setTimeout(() => {
           assert.equal(2,observableCalled,"both observables should have been called");
-          // assert.equal(1,herdcache.metrics._getMetricCounter('get').printObj()['count']);
           assert.equal(1,supplierCalled,"Supplier function should have been called once");
           done();
         },2000);
+    });
+
+    //
+    // Testing if a slow rest request results in a internal cache hit on the herdcache
+    // Observable cache.
+    //
+    it("Returns observable that results in a value from supplier, when cache is enabled",
+      function(done) {
+        this.timeout(5000);
+        var supplierCalled = 0;
+        var restBody = "[{\"status\":\"success\"}]";
+        stubFor(wiremock, get(urlEqualTo("/bob"))
+            .willReturn(a_response()
+                .withStatus(200)
+                .withHeader({"Content-Type": "application/json"})
+                .withBody(restBody)));
+
+        // only execute the request after 1 second.
+        var doRequest = Rx.Observable.create(function(observer) {
+          setTimeout(() => {
+            var rep = rp('http://127.0.0.1:'+mockPort+'/bob');
+              rep.then(function (htmlString) {
+                supplierCalled++;
+                observer.next(htmlString);
+              })
+              rep.catch(function (err) {
+                supplierCalled++;
+                observer.error(err);
+              });
+            }
+        )},1000);
+        cacheEnabled = true;
+        setTimeout(() => {
+          var obs = herdcache.apply(key,doRequest);
+          var obs2 = herdcache.apply(key,doRequest);
+
+          assert.equal(obs,obs2,"the second call to apply should return the currently executing suppler");
+
+          var observableCalled=0;
+          obs.subscribe(function(retrievedValue) {
+            assert.equal(restBody,retrievedValue.value());
+            observableCalled++;
+          });
+
+          obs2.subscribe(function(retrievedValue) {
+            assert.equal(restBody,retrievedValue.value());
+            observableCalled++;
+          });
+
+          setTimeout(() => {
+            console.log(memcachedMock);
+            assert.equal(2,observableCalled,"both observables should have been called");
+            assert.equal(1,supplierCalled,"Supplier function should have been called once");
+            done();
+          },2000);
+        },500);
     });
   });
 
