@@ -22,8 +22,6 @@ function AutodiscoveryServer(strings) {
     this.responsesSize = this.responses.length;
     this.requests_.subscribe(sendResponse(this));
 
-    console.log(this.responsesSize)
-
     this.server = net.createServer((socket) => {
         this.requests_.next({ sock: socket });
     }).listen(11211, '127.0.0.1', () => {
