@@ -2,8 +2,11 @@ const Logging = require('./testlogging');
 var chai = require('chai');
 var expect = chai.expect;
 const Rx = require('rxjs');
+const metrics = require('metrics');
 const rp = require('request-promise');
-const freeportfinder = require("find-free-port")
+const freeportfinder = require("find-free-port");
+const CacheMetricStrings = require('../lib/cachemetricstrings');
+
 var jswiremocklib, jswiremock, stubFor, get, post, urlEqualTo, a_response;
 jswiremocklib = require('jswiremock'), jswiremock = jswiremocklib.jswiremock, stubFor = jswiremocklib.stubFor, get = jswiremocklib.get, post = jswiremocklib.post, urlEqualTo = jswiremocklib.urlEqualTo, a_response = jswiremocklib.a_response, stopJSWireMock = jswiremocklib.stopJSWireMock;
 
@@ -35,6 +38,12 @@ describe('ObservableMemcached', function() {
   var restBody2 = "[{\"status\":\"failed\"}]";
   var slowHttpRequest1Second;
   var slowHttpRequest1Second2;
+  var reporter;
+
+  function getMetricValue(metrics,name) {
+        return metrics["org.greencheek"][name]['count'];
+  }
+
 
   beforeEach(function() {
     console.log("=============================");
@@ -59,12 +68,15 @@ describe('ObservableMemcached', function() {
             .withBody(restBody2)));
     });
 
+    reporter = new metrics.Report;
     memcachedMock = require('memcached-mock');
     InMemoryObservableMemcached = proxyquire('../lib/observable-memcached', {memcached: memcachedMock});
     herdcache = new HerdCache({
       autodiscovery : true,
       autodiscovery_url : "127.0.0.1:11211",
-      autodiscovery_interval: 200
+      autodiscovery_interval: 200,
+      metrics_registries : reporter,
+      metrics_prefix : "org.greencheek."
     })
 
     testAutodiscoveryServer = new AutodiscoveryServer(fs.readFileSync(__dirname + '/fixtures/single', 'utf8'));
@@ -313,7 +325,7 @@ describe('ObservableMemcached', function() {
     // Test that apply takes a predicate that determines
     // that the value cannot be added to the cache
     //
-    it("Check that value cannot be written to the cache",
+    it("Check that value cannot be written to the cache, when given predicate that does not allow it",
       function(done) {
         this.timeout(4000);
         cacheEnabled = true;
@@ -365,6 +377,73 @@ describe('ObservableMemcached', function() {
           setTimeout(() => {
             // Second
             assert.equal(observableCalled,4,"both observables should have been called");
+            done();
+          },2000);
+
+        },500);
+      }
+    );
+
+   //
+    // Test that apply takes a predicate that determines
+    // that the value fetched from the cache cannot be used.
+    //
+    it("Check that value obtained from the cache cannot be used, when given predicate that does not allow it",
+      function(done) {
+        this.timeout(4000);
+        cacheEnabled = true;
+        var isValid = function(value) {
+          if(value == restBody) {
+            return false;
+          } else {
+            return true;
+          }
+        };
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          // This will set the value to first request and store in cache.
+          var observableCalled=0;
+          var obs = herdcache.apply(key,slowHttpRequest1Second);
+          obs.subscribe((retrievedValue) => {
+              assert(!retrievedValue.isFromCache())
+              assert.equal(restBody,retrievedValue.value());
+              observableCalled++;
+          });
+
+          //
+          // Try to obtain key (which is in the cache),
+          // but it will call the supplier
+          //
+          setTimeout(() => {
+            var obs2 = herdcache.apply(key,slowHttpRequest1Second2,
+                          {isCachedValueValidPredicate:isValid});
+            obs2.subscribe((retrievedValue) => {
+              assert(retrievedValue.isNotFromCache())
+              assert.equal(restBody2,retrievedValue.value());
+              observableCalled++;
+            });
+          },1000);
+
+          setTimeout(() => {
+            var obs3 = herdcache.apply(key,slowHttpRequest1Second)
+            obs3.subscribe((retrievedValue) => {
+              assert(retrievedValue.isFromCache())
+              assert.equal(restBody2,retrievedValue.value());
+              observableCalled++;
+            });
+          },1500);
+
+
+          setTimeout(() => {
+            // Second
+            assert.equal(observableCalled,3,"3 observables should have been called");
+            var summary = reporter.summary();
+            assert.equal(getMetricValue(summary,CacheMetricStrings.CACHE_TYPE_DISTRIBUTED_CACHE+"_count"),3);
+            assert.equal(getMetricValue(summary,CacheMetricStrings.CACHE_TYPE_DISTRIBUTED_CACHE+"_hitcount"),2);
+            assert.equal(getMetricValue(summary,CacheMetricStrings.CACHE_TYPE_DISTRIBUTED_CACHE+"_misscount"),1);
+            assert.equal(getMetricValue(summary,CacheMetricStrings.CACHE_TYPE_VALUE_CALCULATION_SUCCESS_COUNTER+"_count"),2);
+            assert.equal(getMetricValue(summary,CacheMetricStrings.CACHE_TYPE_VALUE_CALCULATION+"_misscount"),3);
+            console.log(reporter.summary());
             done();
           },2000);
 

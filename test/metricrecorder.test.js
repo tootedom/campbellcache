@@ -73,24 +73,3 @@ describe('MetricRecorder', function() {
 });
 
 
-// MetricRecorder.prototype.cacheMiss = function (metricName)  {
-//     metricName = this._getMetricName(metricName);
-//     this._incMetricCounter(metricName+"_misscount");
-//     this._incMetricMeter(metricName+"_missrate");
-// }
-
-// MetricRecorder.prototype.cacheHit = function (metricName)  {
-//     metricName = this._getMetricName(metricName);
-//     this._incMetricCounter(metricName+"_hitcount");
-//     this._incMetricMeter(metricName+"_hitrate");
-// }
-
-// MetricRecorder.prototype.logCacheHit = function (key, cacheType){
-//     logger.debug("{ \"cachehit\" : \"{0}\", \"cachetype\" : \"{1}\"}",key,cacheType);
-//     this.cacheHit(cacheType);
-// }
-
-// MetricRecorder.prototype.logCacheMiss = function (key, cacheType){
-//     logger.debug("{ \"cachemiss\" : \"{0}\", \"cachetype\" : \"{1}\"}",key,cacheType);
-//     this.cacheMiss(cacheType);
-// }
