@@ -310,6 +310,69 @@ describe('ObservableMemcached', function() {
     );
 
     //
+    // Test that apply takes a predicate that determines
+    // that the value cannot be added to the cache
+    //
+    it("Check that value cannot be written to the cache",
+      function(done) {
+        this.timeout(4000);
+        cacheEnabled = true;
+        var isCacheable = function(value) {
+          if(value == restBody) {
+            return true;
+          } else {
+            return false;
+          }
+        };
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var obs = herdcache.apply(key,slowHttpRequest1Second,
+                                    {isSupplierValueCachablePredicate:isCacheable});
+
+          var obs2 = herdcache.apply(key2,slowHttpRequest1Second2,
+                                    {isSupplierValueCachablePredicate:isCacheable});
+
+          var observableCalled=0;
+          obs.subscribe((retrievedValue) => {
+              assert(!retrievedValue.isFromCache())
+              assert.equal(restBody,retrievedValue.value());
+              observableCalled++;
+          });
+
+          obs2.subscribe((retrievedValue) => {
+            assert(retrievedValue.isNotFromCache())
+            assert.equal(restBody2,retrievedValue.value());
+            observableCalled++;
+          });
+
+          setTimeout(() => {
+            var obs3 = herdcache.apply(key,slowHttpRequest1Second2)
+            obs3.subscribe((retrievedValue) => {
+              assert(retrievedValue.isFromCache())
+              assert.equal(restBody,retrievedValue.value());
+              observableCalled++;
+            });
+
+            var obs4 = herdcache.apply(key2,slowHttpRequest1Second)
+            obs4.subscribe((retrievedValue) => {
+              assert(retrievedValue.isNotFromCache())
+              assert.equal(restBody,retrievedValue.value());
+              observableCalled++;
+            });
+          },1000);
+
+
+          setTimeout(() => {
+            // Second
+            assert.equal(observableCalled,4,"both observables should have been called");
+            done();
+          },2000);
+
+        },500);
+      }
+    );
+
+    //
     // Testing that set occurs on memcached before value sent to observer
     //
     it("Returns value to observer after memcached set has occurred",
