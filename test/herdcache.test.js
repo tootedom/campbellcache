@@ -280,7 +280,7 @@ describe('ObservableMemcached', function() {
           },2000);
 
           setTimeout(() => {
-            assert.equal(observableCalled,4,"all 3 observables should have been called");
+            assert.equal(observableCalled,4,"all 4 observables should have been called");
             assert.equal(supplierCalled,2,"Supplier function should have been called twice");
             done();
           },3500);

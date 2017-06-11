@@ -2,21 +2,24 @@ const Logging = require('./testlogging');
 var assert = require('assert');
 
 var proxyquire = require('proxyquire');
+const metrics = require('../lib/metricrecorder');
 
 describe('ObservableMemcached', function() {
   var memcachedMock;
   var originalGet;
   var cached;
   var cache;
-  var key = "xxxx";
+  var key = "ccccc";
   var keyValue = "BOB";
 
   beforeEach(function() {
     memcachedMock = require('memcached-mock');
     cached = proxyquire('../lib/observable-memcached', {memcached: memcachedMock});
-    cache = new cached(true,["bob"]);
+    cache = new cached(true,["bob"],{
+      metricsrecorder: new metrics()
+    });
     // Set key to BOB for 10 mins
-    cache.client.set(key,keyValue,600,function() {});
+    cache.client.set(key,keyValue,900,function(err) {});
     originalGet = memcachedMock.prototype.get;
   });
 
@@ -40,29 +43,31 @@ describe('ObservableMemcached', function() {
             assert.equal(keyValue,value.value());
             observerCount += 1;
           });
+
+          obs.subscribe(function(value) {
+            assert.equal(keyValue,value.value());
+            observerCount += 1;
+          });
+
+          obs.subscribe(function(value) {
+            assert.equal("BOB",value.value());
+            assert.equal(key,value.getKey());
+            assert.equal(key,value.key);
+            assert.equal(true,value.isFromCache());
+            assert.equal(true,value.hasValue());
+            assert.equal(false,value.isEmpty());
+            observerCount += 1;
+          });
+
         },500);
-
-        obs.subscribe(function(value) {
-          assert.equal(keyValue,value.value());
-          observerCount += 1;
-        });
-
-        obs.subscribe(function(value) {
-          assert.equal("BOB",value.value());
-          assert.equal(key,value.getKey());
-          assert.equal(key,value.key);
-          assert.equal(true,value.isFromCache());
-          assert.equal(true,value.hasValue());
-          assert.equal(false,value.isEmpty());
-          observerCount += 1;
-        });
 
 
         setTimeout(() => {
+          console.log("lkjlkjlkj");
           assert.equal(1,memcachedMock.prototype.getCalled());
           assert.equal(3,observerCount);
           done();
-        },1500);
+        },2000);
     });
 
     it("Returns observable from get request, with empty value, that takes time to fulfil",
