@@ -377,6 +377,55 @@ describe('ObservableMemcached', function() {
       }
     );
 
+    // Test that apply writes to the cache.
+    it("Check that set is possible, and can then be retrieved from the cache",
+      function(done) {
+        this.timeout(4000);
+        cacheEnabled = true;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var called = monkeyPatchSet(100,memcachedMock);
+          var obs = herdcache.set(key,slowHttpRequest1Second)
+
+          setTimeout(() => {
+            var obsGet = herdcache.get(key);
+            assert.equal(obsGet,obs,"Set should have added to internal cache");
+          },100);
+
+          var observableCalled=0;
+          obs.subscribe((retrievedValue) => {
+            assert(!retrievedValue.isNotFromCache())
+            assert.equal(restBody,retrievedValue.value());
+            observableCalled++;
+          });
+
+          setTimeout(() => {
+            var obs2 = herdcache.get(key,slowHttpRequest1Second2)
+            obs2.subscribe((retrievedValue) => {
+              assert(retrievedValue.isFromCache())
+              assert.equal(restBody,retrievedValue.value());
+              observableCalled++;
+            });
+
+            var obs3 = herdcache.apply("notset",slowHttpRequest1Second2)
+            obs3.subscribe((retrievedValue) => {
+              assert(retrievedValue.isNotFromCache())
+              assert.equal(restBody2,retrievedValue.value());
+              observableCalled++;
+            });
+          },1000);
+
+          setTimeout(() => {
+            // Second
+            assert.equal(called(),2,"memcached set should only have been called twice, as one value will be from cache");
+            assert.equal(observableCalled,3,"both observables should have been called");
+            done();
+          },2000);
+
+        },500);
+      }
+    );
+
     //
     // Test that apply takes a predicate that determines
     // that the value cannot be added to the cache
@@ -706,6 +755,7 @@ function monkeyPatchSet(timeout,mock) {
   var called = 0;
   const set = function(key,value,ttl,cb) {
     setTimeout(() => {
+      console.log("calling: "+key + " : " + value);
       called++;
       originalset.call(this,key,value,ttl,cb);
     },timeout);
