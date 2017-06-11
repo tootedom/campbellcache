@@ -232,6 +232,62 @@ describe('ObservableMemcached', function() {
     });
 
     //
+    // Testing that a slow rest request results in a internal cache hit on the herdcache
+    // Observable cache, when performing a get on the cache.
+    //
+    it("Returns oobservable to get request, that has been inserted by a previous apply",
+      function(done) {
+        this.timeout(5000);
+
+        cacheEnabled = false;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var obs = herdcache.apply(key,slowHttpRequest1Second);
+          var obs2 = herdcache.get(key);
+
+          assert.equal(obs,obs2,
+                      "the second call to apply should return the"+ 
+                      "currently executing suppler");
+
+          var observableCalled=0;
+          obs.subscribe(function(retrievedValue) {
+            assert.equal(restBody,retrievedValue.value());
+            observableCalled++;
+          });
+
+          obs2.subscribe(function(retrievedValue) {
+            assert.equal(restBody,retrievedValue.value());
+            observableCalled++;
+          });
+
+          //
+          // Checks that internal cache is cleared on completion
+          //
+          setTimeout(() => {
+              var obs3 = herdcache.get(key);
+              obs3.subscribe(function(retVal) {
+                assert.equal(false,retVal.isFromCache());
+                assert.equal(null,retVal.value());
+                observableCalled++;
+              });
+
+              var obs4 = herdcache.apply(key,slowHttpRequest1Second);
+              obs4.subscribe(function(retrievedValue) {
+                assert.equal(false,retrievedValue.isFromCache());
+                assert.equal(restBody,retrievedValue.value());
+                observableCalled++;
+              });
+          },2000);
+
+          setTimeout(() => {
+            assert.equal(observableCalled,4,"all 3 observables should have been called");
+            assert.equal(supplierCalled,2,"Supplier function should have been called twice");
+            done();
+          },3500);
+        },300);
+    });
+
+    //
     // Testing if a slow rest request results in a internal cache hit on the herdcache
     // Observable cache.  When cache is enabled.
     //
@@ -469,21 +525,18 @@ describe('ObservableMemcached', function() {
 
           var observableCalled=0;
           obs.subscribe(function(retrievedValue) {
-            console.log("ob1");
             assert.equal(called(),0,"write to memcached should not have occurred");
             assert.equal(retrievedValue.value(),restBody);
             observableCalled++;
           });
 
           obs2.subscribe(function(retrievedValue) {
-            console.log("ob2");
             assert(called()>0,"write to memcached should have occurred");
             assert.equal(restBody,retrievedValue.value());
             observableCalled++;
           });
 
           obs3.subscribe(function(retrievedValue) {
-            console.log("ob3");
             assert.equal(called(),0,"write to memcached should not have occurred");
             assert.equal(restBody,retrievedValue.value());
             observableCalled++;
