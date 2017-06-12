@@ -115,7 +115,8 @@ describe('ObservableMemcached', function() {
             observer.error(err);
           });
         }
-    )},1000);
+      ,1000);
+    });
 
         // only execute the request after 1 second.
     slowHttpRequest1Second2 = Rx.Observable.create(function(observer) {
@@ -129,8 +130,8 @@ describe('ObservableMemcached', function() {
             supplierCalled++;
             observer.error(err);
           });
-        }
-    )},1000);
+        },1000);
+    });
   });
 
   afterEach(function() {
@@ -138,53 +139,72 @@ describe('ObservableMemcached', function() {
     testAutodiscoveryServer.shutdown();
     herdcache.flush();
     herdcache.shutdown();
-    console.log("memcached mocke cache : " + memcachedMock._cache);
-    memcachedMock._cache = {};
-    memcachedMock.prototype.get = memcachedMockOriginalGet;
+    if(memcachedMock) {
+      // console.log("memcached mocke cache : " + memcachedMock._cache);
+      // memcachedMock._cache = {};
+      memcachedMock.prototype.get = memcachedMockOriginalGet;
+    }
     console.log("=============================");
   });
 
   describe("apply", function() {
-    // it("bob", function(done) {
-    //   var i =0;
-    //   this.timeout(4000);
-    //   var obys = new Rx.Observable.of(1);
-    //   // obys.subscribe((value) => console.log(value),null,null);
+    it("bob", function(done) {
+      var i =0;
+      this.timeout(4000);
+      var obys = new Rx.Observable.of(1);
+      // obys.subscribe((value) => console.log(value),null,null);
 
-    //   var obs = new Rx.Observable.create(function(observer) {
-    //     i++;
-    //     console.log("setting next to:" + i);
-    //     console.log("doing sub on obsy");
-    //     var sub = obys.subscribe((value) => {
-    //       console.log("val:" + value);
-    //     },null,null);
-    //     observer.next(i);
+      var obs = new Rx.Observable.create(function(observer) {
+        i++;
+        console.log("setting next to:" + i);
+        console.log("doing sub on obsy");
+        var sub = obys.subscribe((value) => {
+          console.log("val:" + value);
+        },null,null);
+        observer.next(i);
 
-    //     return _ => {
-    //       console.log("end, unsub")
-    //       sub.unsubscribe();
-    //     }
-    //   }).take(1).shareReplay(1);
+        return _ => {
+          console.log("end, unsub")
+          sub.unsubscribe();
+        }
+      }).take(1).shareReplay(1);
 
-    //   console.log("doing sub on obs");
-    //   var s = obs.subscribe((value) => { 
-    //     console.log("given value:" + value);
-    //   },null,() => {
-    //     console.log("complete");
-    //   })
+      // console.log("doing sub on obs");
+      var s = obs.subscribe((value) => { 
+        console.log("given value:" + value);
+      },null,() => {
+        console.log("complete");
+      })
 
-    //   setTimeout(() => {
-    //     done();
+      var oblong = new Rx.Observable.create(function(observer) {
+        setTimeout(()=> {
+          console.log("running oblong");
+          observer.next("bobob");
+        }
+        );
+      }).take(1).shareReplay(1);
 
-    //   var s = obs.subscribe((value) => { 
-    //     console.log("given value:" + value);
-    //   },null,() => {
-    //     console.log("complete");
-    //   })
+      var sublong1 = oblong.subscribe((val) => {
+        console.log("sublong1: " + val);
+      });
 
-    //      s.unsubscribe();
-    //   },2000);
-    // });
+      var sublong2 = oblong.subscribe((val) => {
+        console.log("sublong1: " + val);
+      });
+
+      setTimeout(() => {
+        
+
+        var s = obs.subscribe((value) => { 
+          console.log("given value:" + value);
+        },null,() => {
+          console.log("complete");
+        })
+
+         s.unsubscribe();
+         done();
+      },2000);
+    });
 
     //
     // Testing if a slow rest request results in a internal cache hit on the herdcache
@@ -293,10 +313,11 @@ describe('ObservableMemcached', function() {
     //
     it("Returns observable that results in a value from supplier, when cache is enabled",
       function(done) {
-        this.timeout(5000);
+        this.timeout(6000);
         cacheEnabled = true;
         // Run in a set timeout to allow autodiscover to return disabled cache
         setTimeout(() => {
+          var called = monkeyPatchSet(100,memcachedMock);
           var obs = herdcache.apply(key,slowHttpRequest1Second,{ttl:1});
           var obs2 = herdcache.apply(key,slowHttpRequest1Second,{ttl:1});
 
@@ -326,17 +347,17 @@ describe('ObservableMemcached', function() {
           },3000);
 
           setTimeout(() => {
-            assert.equal(observableCalled,3,"both observables should have been called");
+            assert.equal(observableCalled,3,"all three observables should have been called");
             assert.equal(supplierCalled,2,"Supplier function should have been called twice");
             done();
-          },3500);
+          },4500);
         },500);
     });
 
     // Test that apply writes to the cache.
     it("Check that value from cache is retrieved, after it is set",
       function(done) {
-        this.timeout(4000);
+        this.timeout(5000);
         cacheEnabled = true;
         // Run in a set timeout to allow autodiscover to return disabled cache
         setTimeout(() => {
@@ -364,14 +385,14 @@ describe('ObservableMemcached', function() {
               assert.equal(restBody2,retrievedValue.value());
               observableCalled++;
             });
-          },1000);
+          },2000);
 
           setTimeout(() => {
             // Second
             assert.equal(called(),2,"memcached set should only have been called twice, as one value will be from cache");
             assert.equal(observableCalled,3,"both observables should have been called");
             done();
-          },2000);
+          },3500);
 
         },500);
       }
@@ -380,7 +401,7 @@ describe('ObservableMemcached', function() {
     // Test that apply writes to the cache.
     it("Check that set is possible, and can then be retrieved from the cache",
       function(done) {
-        this.timeout(4000);
+        this.timeout(5000);
         cacheEnabled = true;
         // Run in a set timeout to allow autodiscover to return disabled cache
         setTimeout(() => {
@@ -388,20 +409,28 @@ describe('ObservableMemcached', function() {
           var obs = herdcache.set(key,slowHttpRequest1Second)
 
           setTimeout(() => {
+            console.log("on the get");
             var obsGet = herdcache.get(key);
             assert.equal(obsGet,obs,"Set should have added to internal cache");
-          },100);
+          },500);
 
           var observableCalled=0;
           obs.subscribe((retrievedValue) => {
-            assert(!retrievedValue.isNotFromCache())
+            console.log("SET: should be rest 1, and not cached" + retrievedValue.value() + " " + retrievedValue.isNotFromCache());
+            assert(retrievedValue.isNotFromCache());
+            console.log("SET: should be rest 1, and not cached" + retrievedValue.value() + " " + retrievedValue.isNotFromCache());
             assert.equal(restBody,retrievedValue.value());
+            console.log("SET: should be rest 1, and not cached" + retrievedValue.value() + " " + retrievedValue.isNotFromCache());
+
             observableCalled++;
           });
 
           setTimeout(() => {
+            console.log("DOING GET: " + key);
+
             var obs2 = herdcache.get(key,slowHttpRequest1Second2)
             obs2.subscribe((retrievedValue) => {
+              console.log("SET: should be rest 1" + retrievedValue.value());
               assert(retrievedValue.isFromCache())
               assert.equal(restBody,retrievedValue.value());
               observableCalled++;
@@ -409,22 +438,24 @@ describe('ObservableMemcached', function() {
 
             var obs3 = herdcache.apply("notset",slowHttpRequest1Second2)
             obs3.subscribe((retrievedValue) => {
+              console.log("SET: should be rest 2" + retrievedValue.value());
               assert(retrievedValue.isNotFromCache())
               assert.equal(restBody2,retrievedValue.value());
               observableCalled++;
             });
-          },1000);
+          },2000);
 
           setTimeout(() => {
             // Second
             assert.equal(called(),2,"memcached set should only have been called twice, as one value will be from cache");
             assert.equal(observableCalled,3,"both observables should have been called");
             done();
-          },2000);
+          },4000);
 
         },500);
       }
     );
+
 
     //
     // Test that apply takes a predicate that determines
@@ -755,7 +786,7 @@ function monkeyPatchSet(timeout,mock) {
   var called = 0;
   const set = function(key,value,ttl,cb) {
     setTimeout(() => {
-      console.log("calling: "+key + " : " + value);
+      console.log("calling memcached set: "+key + " : " + value + " : ttl: " + ttl);
       called++;
       originalset.call(this,key,value,ttl,cb);
     },timeout);
