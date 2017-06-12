@@ -308,6 +308,91 @@ describe('ObservableMemcached', function() {
     });
 
     //
+    // Test that set is adds to internal observable cache that apply reads from
+    //
+    it("Test that set adds to same internal observable cache as apply",
+      function(done) {
+        this.timeout(6000);
+        cacheEnabled = true;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var obsset1 = herdcache.set("item6",slowHttpRequest1Second);
+          var observableCalled=0;
+
+          setTimeout(() => {
+            var obsapply1 = herdcache.apply("item6",slowHttpRequest1Second);
+            obsapply1.subscribe(function(retrievedValue) {
+              assert.equal(obsapply1,obsset1);
+              assert.equal(restBody,retrievedValue.value());
+              observableCalled++;
+            });
+          },500);
+
+
+          obsset1.subscribe(function(retrievedValue) {
+            assert.equal(restBody,retrievedValue.value());
+            observableCalled++;
+          });
+
+          //
+          // Checks that the item is not cached
+          //
+          setTimeout(() => {
+              var obsset2 = herdcache.apply("item6",slowHttpRequest1Second2);
+              obsset2.subscribe(function(retrievedValue) {
+                assert(retrievedValue.isFromCache());
+                assert.equal(restBody,retrievedValue.value());
+                observableCalled++;
+              });
+          },2000);
+
+          setTimeout(() => {
+            assert.equal(observableCalled,3,"all observables should have been called");
+            assert.equal(supplierCalled,1,"Supplier function should have been called twice");
+            done();
+          },4000);
+        },500);
+    });
+
+    //
+    // Test that set is able to accept a predicate for not caching the supplier value.
+    //
+    it("Test that set takes a predicate for not caching the supplier value",
+      function(done) {
+        this.timeout(6000);
+        cacheEnabled = true;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var obsset1 = herdcache.set("item6",slowHttpRequest1Second,
+                                      {isSupplierValueCachablePredicate:(v)=>{return false;}});
+
+          var observableCalled=0;
+
+          obsset1.subscribe(function(retrievedValue) {
+            assert.equal(restBody,retrievedValue.value());
+            observableCalled++;
+          });
+
+          //
+          // Checks that the item is not cached
+          //
+          setTimeout(() => {
+              var obsset2 = herdcache.set("item6",slowHttpRequest1Second2);
+              obsset2.subscribe(function(retrievedValue) {
+                assert.equal(restBody2,retrievedValue.value());
+                observableCalled++;
+              });
+          },1500);
+
+          setTimeout(() => {
+            assert.equal(observableCalled,2,"all observables should have been called");
+            assert.equal(supplierCalled,2,"Supplier function should have been called twice");
+            done();
+          },3000);
+        },500);
+    });
+
+    //
     // Testing that TTL setting is passed to memcached item.
     //
     it("Test that apply and set, allow the use of TTL setting on items written to the cache",
