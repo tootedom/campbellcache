@@ -463,7 +463,7 @@ describe('ObservableMemcached', function() {
     //
     it("Check that value cannot be written to the cache, when given predicate that does not allow it",
       function(done) {
-        this.timeout(4000);
+        this.timeout(5000);
         cacheEnabled = true;
         var isCacheable = function(value) {
           if(value == restBody) {
@@ -507,14 +507,14 @@ describe('ObservableMemcached', function() {
               assert.equal(restBody,retrievedValue.value());
               observableCalled++;
             });
-          },1000);
+          },1500);
 
 
           setTimeout(() => {
             // Second
             assert.equal(observableCalled,4,"both observables should have been called");
             done();
-          },2000);
+          },3000);
 
         },500);
       }
@@ -526,7 +526,7 @@ describe('ObservableMemcached', function() {
     //
     it("Check that value obtained from the cache cannot be used, when given predicate that does not allow it",
       function(done) {
-        this.timeout(4000);
+        this.timeout(6000);
         cacheEnabled = true;
         var isValid = function(value) {
           if(value == restBody) {
@@ -548,7 +548,8 @@ describe('ObservableMemcached', function() {
 
           //
           // Try to obtain key (which is in the cache),
-          // but it will call the supplier
+          // but it will call the supplier, as the isValid predicate does
+          // not allow it
           //
           setTimeout(() => {
             var obs2 = herdcache.apply(key,slowHttpRequest1Second2,
@@ -558,7 +559,7 @@ describe('ObservableMemcached', function() {
               assert.equal(restBody2,retrievedValue.value());
               observableCalled++;
             });
-          },1000);
+          },1500);
 
           setTimeout(() => {
             var obs3 = herdcache.apply(key,slowHttpRequest1Second)
@@ -567,7 +568,7 @@ describe('ObservableMemcached', function() {
               assert.equal(restBody2,retrievedValue.value());
               observableCalled++;
             });
-          },1500);
+          },3000);
 
 
           setTimeout(() => {
@@ -581,7 +582,7 @@ describe('ObservableMemcached', function() {
             assert.equal(getMetricValue(summary,CacheMetricStrings.CACHE_TYPE_VALUE_CALCULATION+"_misscount"),3);
             console.log(reporter.summary());
             done();
-          },2000);
+          },5000);
 
         },500);
       }
