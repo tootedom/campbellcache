@@ -308,6 +308,56 @@ describe('ObservableMemcached', function() {
     });
 
     //
+    // Testing that TTL setting is passed to memcached item.
+    //
+    it("Test that apply and set, allow the use of TTL setting on items written to the cache",
+      function(done) {
+        this.timeout(6000);
+        cacheEnabled = true;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var obs = herdcache.apply("item1",slowHttpRequest1Second,{ttl:1});
+          var obsset1 = herdcache.set("item2",slowHttpRequest1Second,{ttl:1});
+
+          var observableCalled=0;
+          obs.subscribe(function(retrievedValue) {
+            assert.equal(restBody,retrievedValue.value());
+            observableCalled++;
+          });
+
+          obsset1.subscribe(function(retrievedValue) {
+            assert.equal(restBody,retrievedValue.value());
+            observableCalled++;
+          });
+
+          //
+          // Checks that internal cache is cleared on completion.
+          // Item will be expired from cache after 1 second due to ttl
+          //
+          setTimeout(() => {
+              var obs3 = herdcache.apply("item1",slowHttpRequest1Second2);
+              obs3.subscribe(function(retrievedValue) {
+                assert.equal(restBody2,retrievedValue.value());
+                observableCalled++;
+              });
+
+              var obsset2 = herdcache.set("item2",slowHttpRequest1Second2);
+              obsset2.subscribe(function(retrievedValue) {
+                assert.equal(restBody2,retrievedValue.value());
+                observableCalled++;
+              });
+
+          },2500);
+
+          setTimeout(() => {
+            assert.equal(observableCalled,4,"all three observables should have been called");
+            assert.equal(supplierCalled,4,"Supplier function should have been called twice");
+            done();
+          },4500);
+        },500);
+    });
+
+    //
     // Testing if a slow rest request results in a internal cache hit on the herdcache
     // Observable cache.  When cache is enabled.
     //
