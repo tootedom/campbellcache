@@ -22,6 +22,7 @@ var AutodiscoveryServer = require('./autodiscovery-server');
 describe('ObservableMemcached', function() {
   var memcachedMock;
   var memcachedMockOriginalGet;
+  var memcachedMockOriginalSet;
   var InMemoryObservableMemcached;
   var EnabledObservableMemcached;
   var DisabledObservableMemcached;
@@ -101,7 +102,7 @@ describe('ObservableMemcached', function() {
     // Set key to BOB for 10 mins
     // EnabledObservableMemcached.client.set(key,value,600,function() {});
     memcachedMockOriginalGet = memcachedMock.prototype.get;
-
+    memcachedMockOriginalSet = memcachedMock.prototype.set;
     // only execute the request after 1 second.
     slowHttpRequest1Second = Rx.Observable.create(function(observer) {
       setTimeout(() => {
@@ -143,6 +144,7 @@ describe('ObservableMemcached', function() {
       // console.log("memcached mocke cache : " + memcachedMock._cache);
       // memcachedMock._cache = {};
       memcachedMock.prototype.get = memcachedMockOriginalGet;
+      memcachedMock.prototype.set = memcachedMockOriginalSet;
     }
     console.log("=============================");
   });
@@ -192,18 +194,27 @@ describe('ObservableMemcached', function() {
         console.log("sublong1: " + val);
       });
 
-      setTimeout(() => {
-        
 
-        var s = obs.subscribe((value) => { 
+      var obsOf = new Rx.Observable.of(false);
+      setTimeout(() => {
+        var s = obs.subscribe((value) => {
           console.log("given value:" + value);
         },null,() => {
           console.log("complete");
         })
 
-         s.unsubscribe();
-         done();
+        obsOf.subscribe( (value) => {
+          console.log("observable.of " + value);
+        });
+
+        s.unsubscribe();
+        done();
       },2000);
+
+      obsOf.subscribe( (value) => {
+        console.log("observable.of " + value);
+      });
+
     });
 
     //
@@ -892,6 +903,70 @@ describe('ObservableMemcached', function() {
             done();
           });
         },1500);
+
+    });
+
+    it("That an item can be removed from the cache",
+      function(done) {
+        cacheEnabled = true;
+        // add a delay to the test
+        this.timeout(5000);
+
+        var observableCalled = 0;
+        //
+        // need to wait for autodiscovery to have run first
+        // to have created the memcached client with the memcachedMock
+        //
+        var obs = null;
+        var getObs = null;
+        var cacheItem = null;
+        var isDeleted = false;
+        var isGetDone = false;
+        var isGetAfterDeleteDone = false;
+
+        setTimeout(() => {
+          obs = herdcache.apply("NO_SUCH_THING",new Rx.Observable.of("20"));
+          obs.subscribe(function(retrievedValue) {
+            cacheItem = retrievedValue;
+            assert.equal("20",retrievedValue.value());
+            assert.equal(false,retrievedValue.isFromCache());
+          });
+        },500)
+
+        var getObs = null;
+
+        setTimeout(() => {
+          var getObs = herdcache.get("NO_SUCH_THING");
+          getObs.subscribe(function(retrievedValue) {
+            assert.equal(true,retrievedValue.isFromCache());
+            assert.equal("20",retrievedValue.value());
+            isGetDone = true;
+          });
+        },1700);
+
+        setTimeout(() => {
+          var delObs = herdcache.clear("NO_SUCH_THING");
+          delObs.subscribe(function(retrievedValue) {
+            assert.equal(true,retrievedValue);
+            isDeleted = true
+          });
+        },2200);
+
+        setTimeout(() => {
+          var getAfterDeleteObs = herdcache.get("NO_SUCH_THING");
+          getAfterDeleteObs.subscribe(function(retrievedValue) {
+            assert.equal(null,retrievedValue.value());
+            assert.equal(false,retrievedValue.isFromCache());
+            isGetAfterDeleteDone = true;
+          });
+        },2500);
+
+        setTimeout(() => {
+          assert.equal(isDeleted,true);
+          assert.equal(isGetDone,true);
+          assert.equal(isGetAfterDeleteDone,true);
+          done();
+        },3000)
 
     });
 
