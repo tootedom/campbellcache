@@ -86,13 +86,13 @@ describe('HerdCache', function() {
     HerdCache.prototype._observableMemcacheFactory = function(hosts,options) {
       if(cacheEnabled) {
         console.log("returning enabled cache");
-        if(options.metricsrecorder) {
+        if(options && options.metricsrecorder) {
           EnabledObservableMemcached.setMetricsRecorder(options.metricsrecorder);
         }
         return EnabledObservableMemcached;
       } else {
         console.log("returning disabled cache");
-        if(options.metricsrecorder) {
+        if(options && options.metricsrecorder) {
           DisabledObservableMemcached.setMetricsRecorder(options.metricsrecorder);
         }
         return DisabledObservableMemcached;

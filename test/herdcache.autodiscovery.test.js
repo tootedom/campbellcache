@@ -80,7 +80,7 @@ describe('HerdCache', function() {
       autodiscovery : true,
       autodiscovery_url : "127.0.0.1:11211",
       autodiscovery_intervalInMs: 1000,
-      autodiscovery_oldClientTTL: 1000,
+      autodiscovery_oldClientTTL: 500,
       metrics_registries : reporter,
       metrics_prefix : "org.greencheek."
     })
@@ -99,12 +99,13 @@ describe('HerdCache', function() {
       this.timeout(4000);
       // Run in a set timeout to allow autodiscover to return disabled cache
       setTimeout(() => {
+        console.log("checking new client")
         var newClient = herdcache.client;
 
         assert.notEqual(newClient,oldClient,"we should have a different client")
         assert.equal(oldClient.isAvailable(),false);
         oldClient2 = newClient;
-      },1200)
+      },1800)
 
 
       setTimeout(() => {
@@ -114,7 +115,7 @@ describe('HerdCache', function() {
         assert.equal(oldClient.isAvailable(),false);
         assert.equal(oldClient2.isAvailable(),false);
         done();
-      },2500)
+      },3000)
     });
 
   });
