@@ -46,3 +46,8 @@ Returning a Observable also means that one request for a cache value from memcac
 
 
 ## Examples
+
+A set of examples that demonstrate the functionality of herd
+
+
+### Observable That Takes Time
