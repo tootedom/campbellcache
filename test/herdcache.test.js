@@ -19,7 +19,7 @@ var fs = require('fs');
 var AutodiscoveryServer = require('./autodiscovery-server');
 
 
-describe('ObservableMemcached', function() {
+describe('HerdCache', function() {
   var memcachedMock;
   var memcachedMockOriginalGet;
   var memcachedMockOriginalSet;
@@ -75,7 +75,7 @@ describe('ObservableMemcached', function() {
     herdcache = new HerdCache({
       autodiscovery : true,
       autodiscovery_url : "127.0.0.1:11211",
-      autodiscovery_interval: 200,
+      autodiscovery_intervalInMs: 200,
       metrics_registries : reporter,
       metrics_prefix : "org.greencheek."
     })
