@@ -50,7 +50,7 @@ describe('HerdCache', function() {
     console.log("=============================");
     supplierCalled=0;
     // find a port to run the wiremock on
-    freeportfinder(3000, function(err, freePort){
+    freeportfinder(9999, function(err, freePort){
       if(err) {
         throw err;
       }
@@ -104,25 +104,10 @@ describe('HerdCache', function() {
     memcachedMockOriginalGet = memcachedMock.prototype.get;
     memcachedMockOriginalSet = memcachedMock.prototype.set;
     // only execute the request after 1 second.
-    slowHttpRequest1Second = Rx.Observable.create(function(observer) {
-      setTimeout(() => {
-        var rep = rp('http://127.0.0.1:'+mockPort+'/bob');
-          rep.then(function (htmlString) {
-            supplierCalled++;
-            observer.next(htmlString);
-          })
-          rep.catch(function (err) {
-            supplierCalled++;
-            observer.error(err);
-          });
-        }
-      ,1000);
-    });
-
-        // only execute the request after 1 second.
-    slowHttpRequest1Second2 = Rx.Observable.create(function(observer) {
-      setTimeout(() => {
-        var rep = rp('http://127.0.0.1:'+mockPort+'/bob2');
+    slowHttpRequest1Second = function() {
+      return Rx.Observable.create(function(observer) {
+        setTimeout(() => {
+          var rep = rp('http://127.0.0.1:'+mockPort+'/bob');
           rep.then(function (htmlString) {
             supplierCalled++;
             observer.next(htmlString);
@@ -132,7 +117,23 @@ describe('HerdCache', function() {
             observer.error(err);
           });
         },1000);
-    });
+    })};
+
+        // only execute the request after 1 second.
+    slowHttpRequest1Second2 = function() { 
+      return Rx.Observable.create(function(observer) {
+        setTimeout(() => {
+          var rep = rp('http://127.0.0.1:'+mockPort+'/bob2');
+            rep.then(function (htmlString) {
+              supplierCalled++;
+              observer.next(htmlString);
+            })
+            rep.catch(function (err) {
+              supplierCalled++;
+              observer.error(err);
+            });
+          },1000);
+      })};
   });
 
   afterEach(function() {
@@ -236,6 +237,7 @@ describe('HerdCache', function() {
 
           var observableCalled=0;
           obs.subscribe(function(retrievedValue) {
+            console.log("lkjlkj");
             assert.equal(restBody,retrievedValue.value());
             observableCalled++;
           });
@@ -925,7 +927,7 @@ describe('HerdCache', function() {
         var isGetAfterDeleteDone = false;
 
         setTimeout(() => {
-          obs = herdcache.apply("NO_SUCH_THING",new Rx.Observable.of("20"));
+          obs = herdcache.apply("NO_SUCH_THING",() => {return new Rx.Observable.of("20")});
           obs.subscribe(function(retrievedValue) {
             cacheItem = retrievedValue;
             assert.equal("20",retrievedValue.value());
