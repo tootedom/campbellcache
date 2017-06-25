@@ -49,5 +49,109 @@ Returning a Observable also means that one request for a cache value from memcac
 
 A set of examples that demonstrate the functionality of herd
 
+### Calling google.co.uk
+
+```nodejs
+require('heapdump');
+
+const Joi = require('joi');
+
+const requestpromise = require('request-promise');
+
+const Hapi = require('hapi');
+
+const Rx = require('rxjs');
+
+const HerdCache = require('herdcache-js');
+
+const herdcache = new HerdCache({
+    autodiscovery: false,
+    autodiscovery_oldClientTTL: 2000,
+    hosts: ["127.0.0.1:11211"],
+})
+
+const server = new Hapi.Server({
+    connections: {
+        routes: {
+            timeout: {
+                server: 5000 //ms
+                //socket: 1000 ms
+            }
+        }
+    }
+}
+);
+
+server.connection({ port: 3000, host: 'localhost' });
+
+server.route({
+    method: 'GET',
+    path: '/',
+    handler: function (request, reply) {
+        reply('Hello, world!');
+    }
+});
+
+function googleObservable() {
+    return Rx.Observable.create(function(observer) {
+        setTimeout(() => {
+            var rep = requestpromise(
+                                    {
+                                        json: true,
+                                        resolveWithFullResponse: true,
+                                        uri: 'http://www.google.co.uk',
+                                        timeout:10000
+                                    }
+            );
+
+            rep.then(function (responseObj) {
+                var body = responseObj.body;
+                observer.next(body);
+                observer.complete();
+            })
+            rep.catch(function (err) {
+                observer.error(err);
+                observer.complete();
+            });
+            }
+        ,1000);
+    }).take(1);
+}
+
+server.route({
+    method: 'GET',
+    path: '/{name}',
+    config: {
+      validate: {
+        params: {
+          name: Joi.string()
+        },
+      },
+    },
+    handler: function (request, reply) {
+        const log = request.log.bind(request);
+
+        // write into cache
+        var obs = herdcache.apply("google",googleObservable, {
+            ttl: 5
+        });
+
+        obs.subscribe(function(httpBody) {
+              reply('Hello, ' + encodeURIComponent(request.params.name) + '!' + httpBody.value());
+              this.unsubscribe();
+        });
+
+    }
+});
+
+server.start((err) => {
+
+    if (err) {
+        throw err;
+    }
+    console.log(`Server running at: ${server.info.uri}`);
+});
+```
+
 
 ### Observable That Takes Time
