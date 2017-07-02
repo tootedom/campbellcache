@@ -218,6 +218,143 @@ describe('HerdCache', function() {
 
     });
 
+    it("Copes with an Observable supplier that throws an error",
+      function(done) {
+        this.timeout(5000);
+
+        cacheEnabled = false;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return new Rx.Observable.create(function(observer) {
+                  observer.error(new Error("BOOM!"))
+              }).take(1).shareReplay();
+          };
+
+          var obs = herdcache.apply(key,supplier);
+
+          var observableCalled=0;
+          var errorCalled=0;
+          obs.subscribe((value) => {
+            observableCalled++;
+          }, (error) => {
+            errorCalled++;
+            assert.equal(error.isError(),true);
+            assert.equal(error.value().message,"BOOM!");
+          });
+
+
+          setTimeout(() => {
+            assert.equal(observableCalled,0,"no success function should have been called");
+            assert.equal(errorCalled,1,"error function should have been called");
+            done();
+          },1000);
+        },300);
+    });
+
+    it("Copes with an Observable supplier that throws an error, when cache is enabled",
+      function(done) {
+        this.timeout(3000);
+
+        cacheEnabled = true;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return new Rx.Observable.create(function(observer) {
+                  observer.error(new Error("BOOMING!"))
+              }).take(1).shareReplay();
+          };
+
+          var obs = herdcache.apply(key,supplier);
+
+          var observableCalled=0;
+          var errorCalled=0;
+          obs.subscribe((value) => {
+            observableCalled++;
+          }, (error) => {
+            errorCalled++;
+            assert.equal(error.isError(),true);
+            assert.equal(error.value().message,"BOOMING!");
+          });
+
+
+          setTimeout(() => {
+            assert.equal(observableCalled,0,"no success function should have been called");
+            assert.equal(errorCalled,1,"error function should have been called");
+            done();
+          },1000);
+        },1000);
+    });
+
+    it("Copes with an Observable function that references a variable that does exist (invalid function",
+      function(done) {
+        this.timeout(5000);
+
+        cacheEnabled = false;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return new Rx.Observable.create(function(observer) {
+                  observer.next(nosuchvariable);
+              }).take(1).shareReplay();
+          };
+
+          var obs = herdcache.apply(key,supplier);
+
+          var observableCalled=0;
+          var errorCalled=0;
+          obs.subscribe((value) => {
+            observableCalled++;
+          }, (error) => {
+            errorCalled++;
+            assert.equal(error.isError(),true);
+            assert.equal(error.value().message,"nosuchvariable is not defined");
+          });
+
+
+          setTimeout(() => {
+            assert.equal(observableCalled,0,"no success function should have been called");
+            assert.equal(errorCalled,1,"error function should have been called");
+            done();
+          },1000);
+        },300);
+    });
+
+    it("Copes with an Observable function that references a variable that does exist (invalid function), when cache enabled",
+      function(done) {
+        this.timeout(3000);
+
+        cacheEnabled = true;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return new Rx.Observable.create(function(observer) {
+                  // references a variable that will make the code blow up
+                  observer.next(nosuchvariableagain);
+              }).take(1).shareReplay();
+          };
+
+          var obs = herdcache.apply(key,supplier);
+
+          var observableCalled=0;
+          var errorCalled=0;
+          obs.subscribe((value) => {
+            observableCalled++;
+          }, (error) => {
+            errorCalled++;
+            assert.equal(error.isError(),true);
+            assert.equal(error.value().message,"nosuchvariableagain is not defined");
+          });
+
+
+          setTimeout(() => {
+            assert.equal(observableCalled,0,"no success function should have been called");
+            assert.equal(errorCalled,1,"error function should have been called");
+            done();
+          },1000);
+        },1000);
+    });
+
     //
     // Testing if a slow rest request results in a internal cache hit on the herdcache
     // Observable cache.
