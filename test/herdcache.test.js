@@ -6,6 +6,7 @@ const metrics = require('metrics');
 const rp = require('request-promise');
 const freeportfinder = require("find-free-port");
 const CacheMetricStrings = require('../lib/cachemetricstrings');
+const Constants = require('../lib/constants');
 
 var jswiremocklib, jswiremock, stubFor, get, post, urlEqualTo, a_response;
 jswiremocklib = require('jswiremock'), jswiremock = jswiremocklib.jswiremock, stubFor = jswiremocklib.stubFor, get = jswiremocklib.get, post = jswiremocklib.post, urlEqualTo = jswiremocklib.urlEqualTo, a_response = jswiremocklib.a_response, stopJSWireMock = jswiremocklib.stopJSWireMock;
@@ -151,71 +152,78 @@ describe('HerdCache', function() {
   });
 
   describe("apply", function() {
-    it("bob", function(done) {
-      var i =0;
-      this.timeout(4000);
-      var obys = new Rx.Observable.of(1);
-      // obys.subscribe((value) => console.log(value),null,null);
+    it("Copes with a function that does not return an Observable",
+      function(done) {
+        this.timeout(5000);
 
-      var obs = new Rx.Observable.create(function(observer) {
-        i++;
-        console.log("setting next to:" + i);
-        console.log("doing sub on obsy");
-        var sub = obys.subscribe((value) => {
-          console.log("val:" + value);
-        },null,null);
-        observer.next(i);
+        cacheEnabled = false;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return function() {
+                return new Rx.Observable.create(function(observer) {
+                    observer.error(new Error("BOOM!"))
+                }).take(1).shareReplay();
+              }
+          };
 
-        return _ => {
-          console.log("end, unsub")
-          sub.unsubscribe();
-        }
-      }).take(1).shareReplay(1);
+          var obs = herdcache.apply(key,supplier);
 
-      // console.log("doing sub on obs");
-      var s = obs.subscribe((value) => { 
-        console.log("given value:" + value);
-      },null,() => {
-        console.log("complete");
-      })
-
-      var oblong = new Rx.Observable.create(function(observer) {
-        setTimeout(()=> {
-          console.log("running oblong");
-          observer.next("bobob");
-        }
-        );
-      }).take(1).shareReplay(1);
-
-      var sublong1 = oblong.subscribe((val) => {
-        console.log("sublong1: " + val);
-      });
-
-      var sublong2 = oblong.subscribe((val) => {
-        console.log("sublong1: " + val);
-      });
+          var observableCalled=0;
+          var errorCalled=0;
+          obs.subscribe((value) => {
+            observableCalled++;
+          }, (error) => {
+            errorCalled++;
+            console.log(error);
+            assert.equal(error.isError(),true);
+            assert.equal(error.value().message,Constants.INVALID_SUPPLIER_FUNCTION_ERROR_MSG);
+          });
 
 
-      var obsOf = new Rx.Observable.of(false);
-      setTimeout(() => {
-        var s = obs.subscribe((value) => {
-          console.log("given value:" + value);
-        },null,() => {
-          console.log("complete");
-        })
+          setTimeout(() => {
+            assert.equal(observableCalled,0,"no success function should have been called");
+            assert.equal(errorCalled,1,"error function should have been called");
+            done();
+          },1000);
+        },300);
+    });
 
-        obsOf.subscribe( (value) => {
-          console.log("observable.of " + value);
-        });
+    it("Copes with a function that does not return an Observable, when cache is enabled",
+      function(done) {
+        this.timeout(3000);
 
-        s.unsubscribe();
-        done();
-      },2000);
+        cacheEnabled = true;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return function() {
+                return new Rx.Observable.create(function(observer) {
+                    observer.error(new Error("BOOM!"))
+                }).take(1).shareReplay();
+              }
+          };
 
-      obsOf.subscribe( (value) => {
-        console.log("observable.of " + value);
-      });
+          var obs = herdcache.apply(key,supplier);
 
+          var observableCalled=0;
+          var errorCalled=0;
+          obs.subscribe((value) => {
+            observableCalled++;
+          }, (error) => {
+            errorCalled++;
+            console.log(error);
+            assert.equal(error.isError(),true);
+            assert.equal(error.value().message,Constants.INVALID_SUPPLIER_FUNCTION_ERROR_MSG);
+          });
+
+
+          setTimeout(() => {
+            assert.equal(observableCalled,0,"no success function should have been called");
+            assert.equal(errorCalled,1,"error function should have been called");
+            done();
+          },1000);
+        },1000);
     });
 
     it("Copes with an Observable supplier that throws an error",
