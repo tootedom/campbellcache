@@ -11,7 +11,7 @@ const MetricRecorder = require('../lib/metricrecorder');
 
 describe('MetricRecorder', function() {
 
-    var ns = "org.greencheeck.herdcachejs";
+    var ns = "org.greencheeck.campbellcache";
 
     function getMetricValue(metrics,name) {
         return metrics[ns][name]['count'];
