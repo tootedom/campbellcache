@@ -159,7 +159,87 @@ The options is dictionary that configures how the `apply` function operates:
 - isCachedValueValidPredicate : If the item retrieved from the cache is useable
 - waitForMemcachedSet : If the supplier was called to generate a value, shoudl we wait for the item to be written to memcached before waiting notify observes of the value.
 
+### Why is the supplier a function?
 
+With the apply (or set) method you provide the supplier as a function.
+This function generates the Observable (or the Promise - from v0.0.3 onwards).
+
+The reason for providing a function that generates the observable, rather than just providing the Observable or Promise; is that Observable or Promise does not need to be created if the value is either:
+
+- Fetched from memcached (or elasticache)
+- Is a cached Observable (an Observable that is already executing - the herd protection)
+
+In both these cases, the Observable (or Promise) does not need to be created.   CampbellCache's `apply` or `set` method will only execute the supplier function that creates the Observable, if it needs to
+
+### Promises
+
+From version 0.0.3, you can provide a Promise to the `apply` method.
+The apply method still returns a Obsverable, but you can easily convert this to a promise via `.toPromise()`.
+
+Here is an example:
+
+```nodejs
+var flakeyGoogleCount = 0;
+function flakeyGooglePromise() {
+    if( (flakeyGoogleCount++)%2 == 0) {
+        var promise = requestpromise(
+            {
+                json: true,
+                resolveWithFullResponse: true,
+                uri: 'http://www.google.co.uk',
+                timeout:10000
+            }
+        );
+
+        return promise.then((data) => {
+            return data.body;
+        }).catch((err) => {
+            return Promise.reject(err);
+        });
+    } else {
+        return new Promise(function(resolve,reject) {
+            reject("boom!");
+        })
+    }
+}
+
+
+server.route({
+    method: 'GET',
+    path: '/flakeypromise/{name}',
+    config: {
+      validate: {
+        params: {
+          name: Joi.string()
+        },
+      },
+    },
+    handler: function (request, reply) {
+        // write into cache
+        var promise = campbellcache.apply(
+            "flakeypromise",
+            flakeyGooglePromise,
+            {
+                ttl: 5
+            }
+        ).toPromise();
+
+        promise.then((cacheItem) => {
+            reply({
+                'isFromCache' : cacheItem.isFromCache(),
+                'value' : cacheItem.value(),
+                'isError' : false
+            })
+        }).catch((error) => {
+            reply({
+                'isFromCache' : error.isFromCache(),
+                'value' : error.value(),
+                'isError' : true
+            })
+        })
+    }
+});
+```
 
 ## Examples
 
