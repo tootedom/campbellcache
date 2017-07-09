@@ -4,10 +4,22 @@
 npm install campbellcache
 ```
 
-* auto-gen TOC:
-{:toc}
+----
+
+   * [Overview](#overview)
+   * [Creating the Cache object](#creating-the-cache-object)
+      * [Local Memcached](#local-memcached)
+      * [AWS Elasticache](#aws-elasticache)
+   * [Methods](#methods)
+         * [Apply](#apply)
+         * [Why is the supplier a function?](#why-is-the-supplier-a-function)
+         * [Promises](#promises)
+   * [Examples](#examples)
+      * [Calling google.co.uk](#calling-googlecouk)
 
 ----
+
+# Overview
 
 The cache borrows heavily from the concepts laid out in [spray-caching](http://spray.io/documentation/1.2.1/spray-caching/).
 
@@ -53,11 +65,11 @@ Returning a Observable also means that one request for a cache value from memcac
 
 ----
 
-## Creating the Cache object
+# Creating the Cache object
 
 Herdcache can be used against a local memcached or run against AWS memcache elasticache (utilising the auto discovery of hosts).
 
-### Local Memcached
+## Local Memcached
 
 The below shows how to connect to 2 local memcached by providing an array of connections
 
@@ -69,7 +81,7 @@ const campbellcache = new CampbellCache({
 ```
 
 
-### AWS Elasticache
+## AWS Elasticache
 
 The easiest way to use elasticache is to set the environment variable: `EC_MEMCACHED_CONFIGURL` to the configuration url of your elasticache cluster:
 
@@ -96,7 +108,7 @@ const campbellcache = new CampbellCache({
 
 ----
 
-## Methods
+# Methods
 
 There's a few methods in campbell cache that you might interact with, buy by far the most likely and recommended is `apply`:
 
@@ -241,11 +253,13 @@ server.route({
 });
 ```
 
-## Examples
+----
+
+# Examples
 
 A set of examples that demonstrate the functionality of campbell cache.
 
-### Calling google.co.uk
+## Calling google.co.uk
 
 The below demonstrates the calling of www.google.co.uk, caching the result for 10 seconds.
 
