@@ -152,6 +152,171 @@ describe('CampbellCache', function() {
   });
 
   describe("apply", function() {
+    it("accepts a Successful Promise as a supplier",
+      function(done) {
+        this.timeout(5000);
+
+        cacheEnabled = false;
+        var observableCalled=0;
+        var successCalled = 0;
+        var errorCalled=0;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return new Promise((resolve,reject) => {
+                console.log("Promise Running");
+                setTimeout(() => {
+                  console.log("Timeout Ended.  Resolving Promise");
+                  observableCalled++;
+                  resolve("delayed message")
+                },1000);
+              })
+          };
+
+          var obs = campbellcache.apply(key,supplier);
+
+          obs.subscribe((value) => {
+            successCalled++;
+          }, (error) => {
+            errorCalled++;
+          });
+
+
+          setTimeout(() => {
+            assert.equal(observableCalled,1,"promise function should have been called");
+            assert.equal(successCalled,1,"success subscriber function should have been called");
+            assert.equal(errorCalled,0,"error function should have been called");
+            done();
+          },2000);
+        },300);
+    });
+
+    it("accepts a Failing Promise as a supplier",
+      function(done) {
+        this.timeout(5000);
+
+        cacheEnabled = false;
+        var observableCalled=0;
+        var successCalled = 0;
+        var errorCalled=0;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return new Promise((resolve,reject) => {
+                console.log("Promise Running");
+                setTimeout(() => {
+                  console.log("Timeout Ended.  Rejecting Promise");
+                  observableCalled++;
+                  reject("delayed rejection message")
+                },1000);
+              })
+          };
+
+          var obs = campbellcache.apply(key,supplier);
+
+          obs.subscribe((value) => {
+            successCalled++;
+          }, (error) => {
+            errorCalled++;
+            assert.equal(error.isError(),true);
+            assert.equal(error.value(),"delayed rejection message");
+          });
+
+
+          setTimeout(() => {
+            assert.equal(observableCalled,1,"promise function should have been called");
+            assert.equal(successCalled,0,"success subscriber function should have been called");
+            assert.equal(errorCalled,1,"error function should have been called");
+            done();
+          },2000);
+        },300);
+    });
+
+
+  it("accepts a Promise as a supplier, and can convert to a Promise",
+      function(done) {
+        this.timeout(5000);
+
+        cacheEnabled = false;
+        var observableCalled=0;
+        var successCalled = 0;
+        var errorCalled=0;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return new Promise((resolve,reject) => {
+                console.log("Promise Running");
+                setTimeout(() => {
+                  console.log("Timeout Ended.  Rejecting Promise");
+                  observableCalled++;
+                  resolve("delayed message")
+                },1000);
+              })
+          };
+
+          var obs = campbellcache.apply(key,supplier).toPromise();
+
+          obs.then((value) => {
+            successCalled++;
+            assert.equal(value.isError(),false);
+            assert.equal(value.value(),"delayed message");
+          }).catch((error) => {
+            errorCalled++;
+          })
+
+          setTimeout(() => {
+            assert.equal(observableCalled,1,"promise function should have been called");
+            assert.equal(successCalled,1,"success subscriber function should have been called");
+            assert.equal(errorCalled,0,"error function not should have been called");
+            done();
+          },2000);
+        },300);
+    });
+
+
+
+    it("accepts a Failing Promise as a supplier, and can convert to a Promise",
+      function(done) {
+        this.timeout(5000);
+
+        cacheEnabled = false;
+        var observableCalled=0;
+        var successCalled = 0;
+        var errorCalled=0;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return new Promise((resolve,reject) => {
+                console.log("Promise Running");
+                setTimeout(() => {
+                  console.log("Timeout Ended.  Rejecting Promise");
+                  observableCalled++;
+                  reject("delayed rejection message")
+                },1000);
+              })
+          };
+
+          var obs = campbellcache.apply(key,supplier).toPromise();
+
+          obs.then((value) => {
+            successCalled++;
+          }).catch((error) => {
+            errorCalled++;
+            assert.equal(error.isError(),true);
+            assert.equal(error.value(),"delayed rejection message");
+          })
+
+          setTimeout(() => {
+            assert.equal(observableCalled,1,"promise function should have been called");
+            assert.equal(successCalled,0,"success subscriber function should not have been called");
+            assert.equal(errorCalled,1,"error function should have been called");
+            done();
+          },2000);
+        },300);
+    });
+
+
+
     it("Copes with a function that does not return an Observable",
       function(done) {
         this.timeout(5000);
