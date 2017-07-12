@@ -15,10 +15,18 @@ jswiremocklib = require('jswiremock'), jswiremock = jswiremocklib.jswiremock, st
 var assert = require('assert');
 var proxyquire = require('proxyquire');
 var CampbellCache = require('../lib/campbellcache');
+var CampbellCache2 = require('../lib/campbellcache');
 var fs = require('fs');
 
 var AutodiscoveryServer = require('./autodiscovery-server');
 
+var mc = require('memcache-server-stream');
+
+var server = mc.server()
+
+server.listen(11200,function(){
+  console.log('ready for connections from memcache clients');
+})
 
 describe('CampbellCache', function() {
   var memcachedMock;
@@ -152,8 +160,211 @@ describe('CampbellCache', function() {
   });
 
   describe("apply", function() {
-    it("accepts a Successful Promise as a supplier",
+    it("It can cache a file larger than 1mb if specified to", function(done) {
+      campbellcacheWithLargeItems = new CampbellCache2({
+        autodiscovery : true,
+        autodiscovery_url : "127.0.0.1:11200",
+        autodiscovery_intervalInMs: 200,
+        metrics_registries : reporter,
+        metrics_prefix : "org.greencheek.",
+        memcached_opts : {
+          memcached : {
+            maxValue : 1048576*3
+          }
+        }
+      });
+      cacheEnabled = true;
+
+      var key = "2mbin";
+      var payload = fs.readFileSync(__dirname + '/fixtures/2mbfile', 'utf8');
+      this.timeout(5000);
+      var observableCalled=0;
+      var successCalled = 0;
+      var errorCalled=0;
+      // Run in a set timeout to allow autodiscover to return disabled cache
+      setTimeout(() => {
+        var supplier = function() {
+            return new Promise((resolve,reject) => {
+              observableCalled++;
+              console.log("Promise Running");
+              resolve(payload);
+            })
+        };
+
+        var obs = campbellcacheWithLargeItems.apply(key,supplier,{ ttl: 60 } ).toPromise();
+
+        obs.then((value) => {
+          successCalled++;
+          assert.equal(value.isError(),false);
+          assert.equal(value.isFromCache(),false);
+        }).catch((error) => {
+          errorCalled++;
+        })
+
+        setTimeout(() => {
+          var obs2 = campbellcache.apply(key,supplier,{ ttl: 60 } ).toPromise();
+          obs2.then((value) => {
+            successCalled++;
+            assert.equal(value.isError(),false);
+            assert.equal(value.isFromCache(),true);
+          }).catch((error) => {
+            errorCalled++;
+          })
+
+        },1000);
+
+        setTimeout(() => {
+          assert.equal(observableCalled,1,"promise function should have been called");
+          assert.equal(successCalled,2,"success subscriber function should have been called");
+          assert.equal(errorCalled,0,"error function not should have been called");
+          done();
+        },3000);
+      },300);
+    });
+
+    it("cannot cache a file larger than 1mb by default", function(done) {
+      var payload = fs.readFileSync(__dirname + '/fixtures/2mbfile', 'utf8');
+
+      this.timeout(5000);
+
+        cacheEnabled = true;
+        var observableCalled=0;
+        var successCalled = 0;
+        var errorCalled=0;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return new Promise((resolve,reject) => {
+                observableCalled++;
+                console.log("Promise Running");
+                resolve(payload);
+              })
+          };
+
+          var obs = campbellcache.apply(key,supplier,{ ttl: 60 } ).toPromise();
+
+          obs.then((value) => {
+            successCalled++;
+            assert.equal(value.isError(),false);
+            assert.equal(value.isFromCache(),false);
+          }).catch((error) => {
+            errorCalled++;
+          })
+
+          setTimeout(() => {
+            var obs2 = campbellcache.apply(key,supplier,{ ttl: 60 } ).toPromise();
+            obs2.then((value) => {
+              successCalled++;
+              assert.equal(value.isError(),false);
+              assert.equal(value.isFromCache(),false);
+            }).catch((error) => {
+              errorCalled++;
+            })
+
+          },1000);
+
+          setTimeout(() => {
+            assert.equal(observableCalled,2,"promise function should have been called");
+            assert.equal(successCalled,2,"success subscriber function should have been called");
+            assert.equal(errorCalled,0,"error function not should have been called");
+            done();
+          },2000);
+        },300);
+    });
+
+    it("can cache a 880kb file by default", function(done) {
+      var payload = fs.readFileSync(__dirname + '/fixtures/800kbfile', 'utf8');
+
+      this.timeout(5000);
+
+        cacheEnabled = true;
+        var observableCalled=0;
+        var successCalled = 0;
+        var errorCalled=0;
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return new Rx.Observable.create((resolve) => {
+                observableCalled++;
+                console.log("Promise Running");
+                resolve.next(payload);
+              })
+          };
+
+          var obs = campbellcache.apply(key,supplier,{ ttl: 60 } ).toPromise();
+
+          obs.then((value) => {
+            successCalled++;
+            assert.equal(value.isError(),false);
+            assert.equal(value.isFromCache(),false);
+          }).catch((error) => {
+            errorCalled++;
+          })
+
+          setTimeout(() => {
+            var obs2 = campbellcache.apply(key,supplier,{ ttl: 60 } ).toPromise();
+            obs2.then((value) => {
+              successCalled++;
+              assert.equal(value.isError(),false);
+              assert.equal(value.isFromCache(),true);
+            }).catch((error) => {
+              errorCalled++;
+            })
+          },1000);
+
+          setTimeout(() => {
+            assert.equal(observableCalled,1,"promise function should have been called");
+            assert.equal(successCalled,2,"success subscriber function should have been called");
+            assert.equal(errorCalled,0,"error function not should have been called");
+            done();
+          },3000);
+        },300);
+    });
+
+    it("calls the observer once in error",
       function(done) {
+        this.timeout(5000);
+
+        cacheEnabled = false;
+        var observableCalled=0;
+        var successCalled = 0;
+        var errorCalled=0;
+
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return new Rx.Observable.create((observer) => {
+                observableCalled++;
+                observer.error("BOOOM");
+              })
+          };
+
+          var obs = campbellcache.apply(key,supplier);
+
+          obs.subscribe((value) => {
+            successCalled++;
+          }, (error) => {
+            errorCalled++;
+          });
+
+          obs.subscribe((value) => {
+            successCalled++;
+          }, (error) => {
+            errorCalled++;
+          });
+
+
+          setTimeout(() => {
+            assert.equal(observableCalled,1,"promise function should have been called");
+            assert.equal(successCalled,0,"success subscriber function should have been called");
+            assert.equal(errorCalled,2,"error function should have been called");
+            done();
+          },2000);
+        },300);
+    });
+
+    it("accepts a Successful Promise as a supplier",
+      function(done) { 
         this.timeout(5000);
 
         cacheEnabled = false;
