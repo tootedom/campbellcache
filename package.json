@@ -1,6 +1,6 @@
 {
   "name": "campbellcache",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Implementation of Herdcache for Javascript",
   "main": "index.js",
   "scripts": {
@@ -33,7 +33,7 @@
     "proxyquire": "^1.8.0",
     "request": "^2.81.0",
     "request-promise": "^4.2.1",
-    "memcache-server-stream" :"1.0.0"
+    "memcache-server-stream": "1.0.0"
   },
   "dependencies": {
     "binford-slf4j": "0.0.1",
