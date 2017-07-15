@@ -155,6 +155,49 @@ describe('CampbellCache', function() {
   });
 
   describe("apply", function() {
+
+    it("calls the observer once in error, for promise reject",
+      function(done) {
+        this.timeout(5000);
+
+        cacheEnabled = true;
+        var observableCalled=0;
+        var successCalled = 0;
+        var errorCalled=0;
+
+        // Run in a set timeout to allow autodiscover to return disabled cache
+        setTimeout(() => {
+          var supplier = function() {
+              return new Promise(function(resolve,reject) {
+                observableCalled++;
+                reject("BOOM!");
+              })
+          };
+
+          var obs = campbellcache.apply(key,supplier);
+
+          obs.subscribe((value) => {
+            successCalled++;
+          }, (error) => {
+            errorCalled++;
+          });
+
+          obs.subscribe((value) => {
+            successCalled++;
+          }, (error) => {
+            errorCalled++;
+          });
+
+
+          setTimeout(() => {
+            assert.equal(observableCalled,1,"promise function should have been called");
+            assert.equal(successCalled,0,"success subscriber function should have been called");
+            assert.equal(errorCalled,2,"error function should have been called");
+            done();
+          },2000);
+        },300);
+    });
+
     it("calls the observer once in error",
       function(done) {
         this.timeout(5000);
@@ -198,7 +241,7 @@ describe('CampbellCache', function() {
     });
 
     it("accepts a Successful Promise as a supplier",
-      function(done) { 
+      function(done) {
         this.timeout(5000);
 
         cacheEnabled = false;

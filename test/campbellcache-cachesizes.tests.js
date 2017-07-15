@@ -64,6 +64,10 @@ describe('CampbellCache-LargeItems', function() {
   });
 
   afterEach(function() {
+    campbellcache.flush(function() { 
+      console.log("flushing");
+    });
+
     try {
       campbellcache.shutdown();
     } catch(err) {

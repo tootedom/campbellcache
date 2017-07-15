@@ -80,6 +80,7 @@ const campbellcache = new CampbellCache({
 })
 ```
 
+----
 
 ## AWS Elasticache
 
@@ -105,6 +106,53 @@ const campbellcache = new CampbellCache({
     autodiscovery_startIntervalInMs : 10000,
 })
 ```
+
+----
+
+## Memcached Options
+
+You can pass to the constructor configuration options that specify how the memcached client will work (https://www.npmjs.com/package/memcached) will work:
+
+```nodejs
+const campbellcache = new CampbellCache({
+    autodiscovery: true,
+    autodiscovery_intervalInMs : 60000,
+    autodiscovery_startIntervalInMs : 10000,
+    memcached_opts : {
+        maxValue : 1048576,
+        timeout: 2500,
+        poolSize:  10,
+        retries: 0,
+        reconnect : 120000,
+        retry: 30000,
+        idle:  60000,
+        remove : false,
+        keyCompression : false
+    }
+})
+```
+
+
+- maxValue: 1048576, the maximum size of a value.
+
+- poolSize: 10, the maximum size of the connection pool.
+
+- reconnect: 18000000, the time between reconnection attempts (in milliseconds).
+
+- timeout: 2500, the time after which Memcached sends a connection timeout (in milliseconds).
+
+- retries: 0, the number of socket allocation retries per request.
+
+- retry: 30000, the time between a server failure and an attempt to set it up back in service.
+
+- remove: false, if true, authorizes the automatic removal of dead servers from the pool.
+
+- keyCompression: true, whether to use md5 as hashing scheme when keys exceed maxKeySize (250).
+
+- idle: 5000, the idle timeout for the connections.
+
+
+It is recommended not to use key compression.  The reason being that key caching involves compressing the key to an MD5 string.  This makes it possible that for different key strings have had a md5 collision; and you end up caching a value against a string which you do not expect.  This could have nasty consequences for your application.
 
 ----
 
@@ -142,7 +190,7 @@ If you do not register your interest in the outcome of the Observable returned b
 var gearsObservable = apply("GearsOfWarDeath",supplier,options)
 ```
 
-In the above nothing will be execute.  The lookup in memcached, nor the execution of the supplier
+In the above nothing will be executed.  The lookup in memcached, nor the execution of the supplier
 
 ```nodejs
 var gearsDeathObservable = apply("GearsOfWarDeath",supplier,options)
@@ -153,7 +201,7 @@ var sub = gearsDeathObservable.subscribe(function(deathBy) {
 });
 ```
 
-_*NOTE* : you are responsible for unsubscribing the subscriber_
+_*NOTE* : you are responsible for unsubscribing the subscriber (more on this later)
 
 The options is dictionary that configures how the `apply` function operates:
 
@@ -176,12 +224,93 @@ The options is dictionary that configures how the `apply` function operates:
 With the apply (or set) method you provide the supplier as a function.
 This function generates the Observable (or the Promise - from v0.0.3 onwards).
 
-The reason for providing a function that generates the observable, rather than just providing the Observable or Promise; is that Observable or Promise does not need to be created if the value is either:
+The reason for providing a function that generates the observable (or promise), rather than just providing the Observable or Promise; is that Observable or Promise does not need to be created if the value is either:
 
 - Fetched from memcached (or elasticache)
 - Is a cached Observable (an Observable that is already executing - the herd protection)
 
-In both these cases, the Observable (or Promise) does not need to be created.   CampbellCache's `apply` or `set` method will only execute the supplier function that creates the Observable, if it needs to
+In both these cases, the Observable (or Promise) does not need to be created.   CampbellCache's `apply` or `set` method will only execute the supplier function that creates the Observable, if it needs to.
+
+For example, in the following lets assume that slow_google_request is a
+requestpromise to www.google.co.uk that takes 1 second to execute.
+
+If a second request comes in, that calls google 500ms after the 1st request
+the observable returns by campbellcache.apply will be the same obseverable.
+The slow_google_request function will not be called.
+
+```nodejs
+    var subscribers_executed = 0;
+
+    // write into cache
+    var obs1 = campbellcache.apply("google",slow_google_request, {
+        ttl: 10
+    });
+
+    // call it again 500ms after 1st request
+    setTimeout( () => {
+        var obs2 = campbellcache.apply("google",slow_google_request);
+        obs2.subscribe(subscribers_executed++);
+    },500);
+
+    var sub = obs1.subscribe(function(httpBody) {
+        subscribers_executed++;
+        setTimeout(() => {
+            reply({
+                success : false,
+                google_requests: google_requests,
+                google_function_requests : slow_google_request_function_calls,
+                value: httpBody.value(),
+                subscribers_executed: subscribers_executed
+            });
+        },1000);
+    });
+```
+
+----
+
+### Set
+
+```nodejs
+set(key,supplier,options)
+```
+
+Sets a value in the cache from the given supplier.
+
+This method always forces the setting of a value to the cache (if it is deemed cacheable).
+
+The internal cache that contains observables will be replaced by this running supplier, so any other call to apply and get will be supplied this observable.
+
+The key must be a string, and the supplier must be a function that returns  an Observable or Promise that generates the value that is to be place in the cache
+
+Like that of the `apply` method the options is dictionary that configures how the `set` function operates:
+
+```nodejs
+     {
+        ttl : 5,
+        isSupplierValueCachablePredicate:<boolean function(item)>,
+        waitForMemcachedSet : true|false,
+     };
+```
+
+- ttl : The number of seconds the item should be stored in the cache.
+
+- isSupplierValueCachablePredicate : A function that takes the item from the                                          observable and return true if the item is cachable.
+
+- waitForMemcachedSet : If the supplier was called to generate a value, shoudl we wait for the item to be written to memcached before waiting notify observes of the value.
+
+----
+
+### Get
+
+```nodejs
+get(key)
+```
+
+Returns an Observable that could either be an Observable that is running an existing `apply` or `set` supplier; for the given `key`.  Or returns a new Observable that executes a look up for an item in memcached.
+
+Returns a CacheItem from the Observable (like all other methods), for which
+`cacheItem.value()` will return null if the item was not in the memcached.
+`cacheItem.isFromCache()` will tell you if the item is from the cache or not.
 
 ### Promises
 
@@ -252,6 +381,10 @@ server.route({
     }
 });
 ```
+
+----
+
+
 
 ----
 
@@ -418,5 +551,124 @@ server.start((err) => {
 
 ```
 
+## Example Of Same Observable being returned
+
+```nodejs
+const Joi = require('joi');
+const requestpromise = require('request-promise');
+const Hapi = require('hapi');
+const Rx = require('rxjs');
+
+var slf4j = require('binford-slf4j');
+var binfordLogger = require('binford-logger');
+
+slf4j.setLoggerFactory(binfordLogger.loggerFactory);
+slf4j.loadConfig({
+    level: slf4j.LEVELS.DEBUG,
+    appenders:
+        [{
+            appender: binfordLogger.getDefaultAppender()
+        }]
+});
+
+
+const CampbellCache = require('campbellcache');
+
+const campbellcache = new CampbellCache({
+    autodiscovery: false,
+    autodiscovery_oldClientTTL: 2000,
+    hosts: ["127.0.0.1:11211"],
+})
+
+const server = new Hapi.Server({
+    connections: {
+        routes: {
+            timeout: {
+                server: 5000 //ms
+                //socket: 1000 ms
+            }
+        }
+    }
+}
+);
+
+var slow_google_request_function_calls = 0;
+var google_requests = 0;
+function slow_google_request() {
+    slow_google_request_function_calls++;
+    return new Promise( (resolve,reject) => {
+        setTimeout( () => {
+            var promise = requestpromise(
+                {
+                    json: true,
+                    resolveWithFullResponse: true,
+                    uri: 'http://www.google.co.uk',
+                    timeout:10000
+                }
+            );
+            promise.then((data) => {
+                google_requests++;
+                resolve("success");
+            }).catch((err) => {
+                reject("fail");
+            });
+        },1000);
+    })
+
+}
+
+server.connection({ port: 3000, host: 'localhost' });
+
+server.route({
+    method: 'GET',
+    path: '/',
+    config: {
+      validate: {
+        params: {
+          name: Joi.string()
+        },
+      },
+    },
+    handler: function (request, reply) {
+        const log = request.log.bind(request);
+        var subscribers_executed = 0;
+
+        // write into cache
+        var obs1 = campbellcache.apply("google",slow_google_request, {
+            ttl: 10
+        });
+
+        // call it again
+        setTimeout( () => {
+            var obs2 = campbellcache.apply("google",slow_google_request);
+            obs2.subscribe(subscribers_executed++);
+        },500);
+
+        var sub = obs1.subscribe(function(httpBody) {
+            subscribers_executed++;
+            setTimeout(() => {
+                reply({
+                    success : false,
+                    google_requests: google_requests,
+                    google_function_requests : slow_google_request_function_calls,
+                    value: httpBody.value(),
+                    subscribers_executed: subscribers_executed
+                });
+            },1000);
+        });
+
+    }
+});
+
+
+server.start((err) => {
+
+    if (err) {
+        throw err;
+    }
+    console.log(`Server running at: ${server.info.uri}`);
+});
+
+```
 
 ### More Docs Coming Soon....
