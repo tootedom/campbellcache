@@ -10,12 +10,20 @@ npm install campbellcache
    * [Creating the Cache object](#creating-the-cache-object)
       * [Local Memcached](#local-memcached)
       * [AWS Elasticache](#aws-elasticache)
+      * [Memcached Options](#memcached-options)
+      * [Autodiscovery](#autodiscovery)
    * [Methods](#methods)
-         * [Apply](#apply)
+      * [Apply](#apply)
          * [Why is the supplier a function?](#why-is-the-supplier-a-function)
          * [Promises](#promises)
+         * [Unsubscribing](#unsubscribing)
+      * [Set](#set)
+      * [Get](#get)
+      * [Clear](#clear)
+   * [Logging](#logging)
    * [Examples](#examples)
       * [Calling google.co.uk](#calling-googlecouk)
+      * [Example Of Same Observable being returned](#example-of-same-observable-being-returned)
 
 ----
 
@@ -156,11 +164,47 @@ It is recommended not to use key compression.  The reason being that key caching
 
 ----
 
+## Autodiscovery
+
+Autodiscovery is the mechanism by which the memcached servers to connect to
+are discovered by polling a configuration url.  This is primarily for AWS elasticcache use:(http://docs.aws.amazon.com/AmazonElastiCache/latest/UserGuide/AutoDiscovery.html)
+
+The configuration server url is by default taken from the environment variable `EC_MEMCACHED_CONFIGURL`.  However, this can be override and specified at construction time via `autodiscovery_url`.
+
+There are several other options that control the autodiscovery, and the frequency by which it talks to configuration server to find if there are new nodes.
+
+The following shows the options available:
+
+```nodejs
+const campbellcache = new CampbellCache({
+    autodiscovery: true,
+    autodiscovery_intervalInMs : 60000,
+    autodiscovery_startIntervalInMs : 0,
+    autodiscovery_timeoutInMs: 3000,
+    autodiscovery_oldClientTTL : 120000,
+    autodiscovery_url: "127.0.0.1:11211"
+})
+```
+
+- autodiscovery : If autodiscovery is actually enabled.  If not enable, you need to specify the memcached servers via `hosts`.
+
+- autodiscovery_intervalInMs : The frequency, in millis, by which to poll checking for new memcached servers
+
+- autodiscovery_startIntervalInMs : The delay for the first polling request to take place.
+
+- autodiscovery_timeoutInMs : The checking for new servers is a network request.  This is the number of milliseconds the network request is allowed to take at a maximum
+
+- autodiscovery_oldClientTTL : When new servers are discovered, the old memcached client is shutdown, and a new one created (under the campbell cache hood).  This is the amount of time to wait, in milliseconds, before the old memcached client is shutdown (allows time for old operations to finish)
+
+- autodiscovery_url : url of the configuration server.  Default is to use the environment variable: `EC_MEMCACHED_CONFIGURL`
+
+----
+
 # Methods
 
 There's a few methods in campbell cache that you might interact with, buy by far the most likely and recommended is `apply`:
 
-### Apply
+## Apply
 
 ```nodejs
 apply(key,supplier,options)
@@ -249,7 +293,7 @@ The slow_google_request function will not be called.
     // call it again 500ms after 1st request
     setTimeout( () => {
         var obs2 = campbellcache.apply("google",slow_google_request);
-        obs2.subscribe(subscribers_executed++);
+        obs2.subscribe((value) => subscribers_executed++);
     },500);
 
     var sub = obs1.subscribe(function(httpBody) {
@@ -268,50 +312,6 @@ The slow_google_request function will not be called.
 
 ----
 
-### Set
-
-```nodejs
-set(key,supplier,options)
-```
-
-Sets a value in the cache from the given supplier.
-
-This method always forces the setting of a value to the cache (if it is deemed cacheable).
-
-The internal cache that contains observables will be replaced by this running supplier, so any other call to apply and get will be supplied this observable.
-
-The key must be a string, and the supplier must be a function that returns  an Observable or Promise that generates the value that is to be place in the cache
-
-Like that of the `apply` method the options is dictionary that configures how the `set` function operates:
-
-```nodejs
-     {
-        ttl : 5,
-        isSupplierValueCachablePredicate:<boolean function(item)>,
-        waitForMemcachedSet : true|false,
-     };
-```
-
-- ttl : The number of seconds the item should be stored in the cache.
-
-- isSupplierValueCachablePredicate : A function that takes the item from the                                          observable and return true if the item is cachable.
-
-- waitForMemcachedSet : If the supplier was called to generate a value, shoudl we wait for the item to be written to memcached before waiting notify observes of the value.
-
-----
-
-### Get
-
-```nodejs
-get(key)
-```
-
-Returns an Observable that could either be an Observable that is running an existing `apply` or `set` supplier; for the given `key`.  Or returns a new Observable that executes a look up for an item in memcached.
-
-Returns a CacheItem from the Observable (like all other methods), for which
-`cacheItem.value()` will return null if the item was not in the memcached.
-`cacheItem.isFromCache()` will tell you if the item is from the cache or not.
-
 ### Promises
 
 From version 0.0.3, you can provide a Promise to the `apply` method.
@@ -323,27 +323,27 @@ Here is an example:
 var flakeyGoogleCount = 0;
 function flakeyGooglePromise() {
     if( (flakeyGoogleCount++)%2 == 0) {
-        var promise = requestpromise(
-            {
-                json: true,
-                resolveWithFullResponse: true,
-                uri: 'http://www.google.co.uk',
-                timeout:10000
-            }
-        );
-
-        return promise.then((data) => {
-            return data.body;
-        }).catch((err) => {
-            return Promise.reject(err);
-        });
+        return new Promise( (resolve,reject) => {
+            var promise = requestpromise(
+                {
+                    json: true,
+                    resolveWithFullResponse: true,
+                    uri: 'http://www.google.co.uk',
+                    timeout:10000
+                }
+            );
+            promise.then((data) => {
+                resolve(data.body);
+            }).catch((err) => {
+                reject(err);
+            });
+        })
     } else {
         return new Promise(function(resolve,reject) {
             reject("boom!");
         })
     }
 }
-
 
 server.route({
     method: 'GET',
@@ -383,8 +383,105 @@ server.route({
 ```
 
 ----
+### Unsubscribing
+
+In RxJS, when you subscribe to an observable you are returned a subscription:
+
+```nodejs
+var subscription = obs.subscribe(function(httpBody) {
+    reply('Hello, ' + encodeURIComponent(request.params.name) + '!' + httpBody.value());
+});
+```
+
+Observables are normally streams, that are continually returning data (mouse movements, keyboard events).  The Observable is non finite, i.e. continuously emitting data.  However, when working with Promises the data being generated is usually finite (a http request, a lookup for an item in a data store).
+
+In RxJS it is important to unsubscribe from non finite observable in order to release memory associate with the subscription.   However, this is not required for a finite Observable (i.e. a Promise); it is a `SafeSubscription`, that does not require `unsubscribe()` to be called.
 
 
+----
+
+## Set
+
+```nodejs
+set(key,supplier,options)
+```
+
+Sets a value in the cache from the given supplier.
+
+This method always forces the setting of a value to the cache (if it is deemed cacheable).
+
+The internal cache that contains observables will be replaced by this running supplier, so any other call to apply and get will be supplied this observable.
+
+The key must be a string, and the supplier must be a function that returns  an Observable or Promise that generates the value that is to be place in the cache
+
+Like that of the `apply` method the options is dictionary that configures how the `set` function operates:
+
+```nodejs
+     {
+        ttl : 5,
+        isSupplierValueCachablePredicate:<boolean function(item)>,
+        waitForMemcachedSet : true|false,
+     };
+```
+
+- ttl : The number of seconds the item should be stored in the cache.
+
+- isSupplierValueCachablePredicate : A function that takes the item from the                                          observable and return true if the item is cachable.
+
+- waitForMemcachedSet : If the supplier was called to generate a value, shoudl we wait for the item to be written to memcached before waiting notify observes of the value.
+
+----
+
+## Get
+
+```nodejs
+get(key)
+```
+
+Returns an Observable that could either be an Observable that is running an existing `apply` or `set` supplier; for the given `key`.  Or returns a new Observable that executes a look up for an item in memcached.
+
+Returns a CacheItem from the Observable (like all other methods), for which
+`cacheItem.value()` will return null if the item was not in the memcached.
+`cacheItem.isFromCache()` will tell you if the item is from the cache or not.
+
+----
+
+## Clear
+
+Removes an item from the cache, and clears any Observable from the
+internal cache.
+
+Returns an Observerable that returns true or false, if the delete ran ok.
+
+```nodejs
+var delObs = campbellcache.clear("NO_SUCH_THING");
+delObs.subscribe(function(retrievedValue) {
+    assert.equal(true,retrievedValue);
+});
+```
+
+----
+
+# Logging
+
+Campbell Cache uses [Binford slf4j](https://www.npmjs.com/package/binford-slf4j) for logging (https://github.com/ivanplenty/binford-slf4j).
+
+If you wish to see some logging output from cambell cache, you need to set up once the follow (create a separate file and require it):
+
+The below goes to the console
+```nodejs
+var slf4j = require('binford-slf4j');
+var binfordLogger = require('binford-logger');
+
+slf4j.setLoggerFactory(binfordLogger.loggerFactory);
+slf4j.loadConfig({
+    level: slf4j.LEVELS.WARN,
+    appenders:
+        [{
+            appender: binfordLogger.getDefaultAppender()
+        }]
+});
+```
 
 ----
 
@@ -414,7 +511,9 @@ Requests/sec:    401.39
 Transfer/sec:     17.52MB
 ```
 
-Here is an example using Hapi.js and request promise.   Please see the `onRequest` and `onPreResponse` which add the Observable subscriber to a list of subscribers, that are to be closed when the request finishes.
+Here is an example using Hapi.js and request promise.   
+
+The example uses the `onRequest` and `onPreResponse` of hapi.js to add the Observable's subscribers to a list of subscribers, that are then closed when the request finishes (not required for finite observables - which the example is.  It is just demonstrating how to close a subscriber if you need to)
 
 
 ```nodejs
