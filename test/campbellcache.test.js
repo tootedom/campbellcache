@@ -79,8 +79,10 @@ describe('CampbellCache', function() {
       autodiscovery : true,
       autodiscovery_url : "127.0.0.1:11211",
       autodiscovery_intervalInMs: 200,
-      metrics_registries : reporter,
-      metrics_prefix : "org.greencheek."
+      metrics : {
+        registries : reporter,
+        prefix : "org.greencheek."
+      }
     })
 
     testAutodiscoveryServer = new AutodiscoveryServer(fs.readFileSync(__dirname + '/fixtures/single', 'utf8'));
