@@ -136,6 +136,12 @@ const campbellcache = new CampbellCache({
         idle:  60000,
         remove : false,
         keyCompression : false
+        retries: 0,
+        minTimeout: 1000,
+        maxTimeout: 10000,
+        factor: 3,
+        randomize: false,
+        debug: false
     }
 })
 ```
@@ -158,6 +164,18 @@ const campbellcache = new CampbellCache({
 - keyCompression: true, whether to use md5 as hashing scheme when keys exceed maxKeySize (250).
 
 - idle: 5000, the idle timeout for the connections.
+
+- retries: 0, Connection pool retries to pull connection from pool
+
+- factor: 3, Connection pool retry exponential backoff factor
+
+- minTimeout: 1000, Connection pool retry min delay before retrying
+
+- maxTimeout: 10000, Connection pool retry max delay before retrying
+
+- randomize: false, Connection pool retry timeout randomization
+
+- debug: false, Output the commands and responses from memcached
 
 
 It is recommended not to use key compression.  The reason being that key caching involves compressing the key to an MD5 string.  This makes it possible that for different key strings have had a md5 collision; and you end up caching a value against a string which you do not expect.  This could have nasty consequences for your application.
