@@ -185,7 +185,12 @@ It is recommended not to use key compression.  The reason being that key caching
 ## Autodiscovery
 
 Autodiscovery is the mechanism by which the memcached servers to connect to
-are discovered by polling a configuration url.  This is primarily for AWS elasticcache use:(http://docs.aws.amazon.com/AmazonElastiCache/latest/UserGuide/AutoDiscovery.html)
+are discovered by polling a configuration url, or a dns entry.  
+
+The default auto discovery primarily for AWS elasticcache:(http://docs.aws.amazon.com/AmazonElastiCache/latest/UserGuide/AutoDiscovery.html)
+
+If the list of memcached servers you wish to connect to are discovered via a dns address (ipv4) then you can use DNS Autodiscovery, by specifying the 
+configuration parameter `autodiscovery_by_dns` as true.
 
 The configuration server url is by default taken from the environment variable `EC_MEMCACHED_CONFIGURL`.  However, this can be override and specified at construction time via `autodiscovery_url`.
 
@@ -200,11 +205,14 @@ const campbellcache = new CampbellCache({
     autodiscovery_startIntervalInMs : 0,
     autodiscovery_timeoutInMs: 3000,
     autodiscovery_oldClientTTL : 120000,
-    autodiscovery_url: "127.0.0.1:11211"
+    autodiscovery_url: "127.0.0.1:11211",
+    autodiscovery_by_dns: false
 })
 ```
 
 - autodiscovery : If autodiscovery is actually enabled.  If not enable, you need to specify the memcached servers via `hosts`.
+
+- autodiscovery_by_dns : If the list of memcached hosts to connect to is actually discovery by resolving a dns address (which will be constantly polled for changes)
 
 - autodiscovery_intervalInMs : The frequency, in millis, by which to poll checking for new memcached servers
 
