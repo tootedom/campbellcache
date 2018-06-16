@@ -77,6 +77,19 @@ Returning a Observable also means that one request for a cache value from memcac
 
 Herdcache can be used against a local memcached or run against AWS memcache elasticache (utilising the auto discovery of hosts).
 
+## No Memcached
+
+If you wish to use the Cache as an in memory cache, and not use that of memcached.  You can create the as follows.  It uses [`caching-map`](https://www.npmjs.com/package/caching-map) as the in memory store:
+
+
+```nodejs
+const campbellcache = new CampbellCache({
+    autodiscovery: false,
+    in_memory: true
+})
+```
+
+
 ## Local Memcached
 
 The below shows how to connect to 2 local memcached by providing an array of connections
@@ -116,6 +129,49 @@ const campbellcache = new CampbellCache({
 ```
 
 ----
+
+## Memcached Hosts Discovery by DNS name
+
+If you use some sort of service discovery, which constantly updates a DNS entry with healthy memcached node, then this is mode you want to use.
+The specified dns entry will be constantly polled for the memcached hosts.  If the hosts change, the cache client will be updated
+to point to those entries automatically.
+
+Set the value of the environment variable: `EC_MEMCACHED_CONFIGURL` to the DNS name that will resolve to your memcached hosts.
+
+```bash
+export EC_MEMCACHED_CONFIGURL=domsmemcached.service
+```
+
+If you have configured your memcached nodes on a different port do:
+
+```bash
+export EC_MEMCACHED_CONFIGURL=domsmemcached.service:11211
+```
+
+Once you have the above set you create the client as follows:
+
+
+```nodejs
+const campbellcache = new CampbellCache({
+    autodiscovery: true,
+    autodiscovery_intervalInMs : 60000,
+    autodiscovery_startIntervalInMs : 10000,
+    autodiscovery_by_dns: true
+})
+```
+
+If the DNS Name isn't set in the environment variable, pass it as a constructor arg:
+
+```nodejs
+const campbellcache = new CampbellCache({
+    autodiscovery: true,
+    autodiscovery_url: "domsmemcached.service",
+    autodiscovery_intervalInMs : 60000,
+    autodiscovery_startIntervalInMs : 10000,
+    autodiscovery_by_dns: true
+})
+```
+
 
 ## Memcached Options
 
