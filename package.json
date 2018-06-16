@@ -41,6 +41,8 @@
     "memcached": "^2.2.2",
     "metrics": "^0.1.11",
     "optional-js": "^1.2.1",
-    "rxjs": "^5.4.2"
+    "rxjs": "^5.4.2",
+    "snappy": "^6.0.0",
+    "is-buffer" :"^1.1.5"
   }
 }
