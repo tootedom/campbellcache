@@ -29,7 +29,7 @@ npm install campbellcache
 
 # Overview
 
-The cache borrows heavily from the concepts laid out in [spray-caching](http://spray.io/documentation/1.2.1/spray-caching/).
+The cache borrows heavily from the concepts laid out in [spray-caching](http://spray.io/documentation/1.2.4/spray-caching/).
 
 An equivalent library to Campbell Cache for java is that of [herdcache](https://github.com/tootedom/herdcache).  Originally I was going to name this herdcache-js.  However, my White Campbell ducks got taken by a fox; so in honour of Henrietta and Puddle I renamed it (think of it as a Herd of Ducks :-)
 
