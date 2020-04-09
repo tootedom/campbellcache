@@ -28,12 +28,12 @@
     "eslint": "^3.19.0",
     "find-free-port": "^1.0.2",
     "jswiremock": "^0.3.5",
+    "memcache-server-stream": "1.0.0",
     "memcached-mock": "^0.1.0",
-    "mocha": "^3.4.1",
+    "mocha": "^7.1.1",
     "proxyquire": "^1.8.0",
     "request": "^2.81.0",
-    "request-promise": "^4.2.1",
-    "memcache-server-stream": "1.0.0"
+    "request-promise": "^4.2.1"
   },
   "dependencies": {
     "binford-slf4j": "0.0.1",
