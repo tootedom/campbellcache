@@ -1,4 +1,5 @@
 const Logging = require('./testlogging');
+Logging.initialize();
 var chai = require('chai');
 var expect = chai.expect;
 const Rx = require('rxjs');
@@ -75,7 +76,7 @@ describe('CampbellCache', function() {
 
     reporter = new metrics.Report;
     memcachedMock = require('memcached-mock');
-    InMemoryObservableMemcached = proxyquire('../lib/observable-memcached', {memcached: memcachedMock});
+    InMemoryObservableMemcached = proxyquire('../lib/observable-inmemory', {memcached: memcachedMock});
     campbellcache = new CampbellCache({
       autodiscovery : true,
       autodiscovery_url : "127.0.0.1:11211",
@@ -88,16 +89,16 @@ describe('CampbellCache', function() {
   });
 
   afterEach(function() {
-    testAutodiscoveryServer.shutdown();
-    campbellcache.flush();
+    // campbellcache.flush();
     campbellcache.shutdown();
+    testAutodiscoveryServer.shutdown();
   });
 
   describe("apply", function() {
     it("closes old client after autodiscovery", function(done) {
       var oldClient = campbellcache.client;
       var oldClient2 = null;
-      this.timeout(5000);
+      this.timeout(12000);
       // Run in a set timeout to allow autodiscover to return disabled cache
       setTimeout(() => {
         console.log("checking new client")
@@ -115,6 +116,7 @@ describe('CampbellCache', function() {
         assert.notEqual(oldClient2,oldClient,"we should have a different clients for the 2 old client")
         assert.equal(oldClient.isAvailable(),false);
         assert.equal(oldClient2.isAvailable(),false);
+        console.log("end auto")
         done();
       },4000)
     });

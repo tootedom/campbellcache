@@ -29,7 +29,7 @@ npm install campbellcache
 
 # Overview
 
-The cache borrows heavily from the concepts laid out in [spray-caching](http://spray.io/documentation/1.2.1/spray-caching/).
+The cache borrows heavily from the concepts laid out in [spray-caching](http://spray.io/).
 
 An equivalent library to Campbell Cache for java is that of [herdcache](https://github.com/tootedom/herdcache).  Originally I was going to name this herdcache-js.  However, my White Campbell ducks got taken by a fox; so in honour of Henrietta and Puddle I renamed it (think of it as a Herd of Ducks :-)
 
@@ -546,7 +546,49 @@ delObs.subscribe(function(retrievedValue) {
 
 # Logging
 
-Campbell Cache uses [Binford slf4j](https://www.npmjs.com/package/binford-slf4j) for logging (https://github.com/ivanplenty/binford-slf4j).
+## Version 1.0.0
+
+Logging is performed via an EventEmitter.
+You can obtain the event emitted via the CampbellCache object,
+and then use your favourite logging library.  Log lines 'events' are emitted against the event name `campbell-cache-log-event`:
+
+```
+CampbellCache.logEmitter.on('campbell-cache-log-event', function(level, message, ...args) {
+    // Log the message through your logging package here
+    // logger.log(level, message, ...args)
+});
+```
+
+Here is an example using winston:
+```
+const winston = require('winston');
+const CampbellCache = require('../lib/campbellcache');
+
+const logger = winston.createLogger({
+    level: 'debug'
+
+});
+logger.add(new winston.transports.Console({
+    format: winston.format.combine(
+        winston.format.splat(),
+        winston.format.simple()
+    ),
+}));
+
+var initialized = false;
+module.exports.initialize = function() {
+    if (!initialized) {
+        initialized = true;
+        CampbellCache.logEmitter.on('campbell-cache-log-event', function(level, message, ...args) {
+            logger.log(level, message, ...args)
+        });
+    }
+}
+```
+
+## Verion 0.1.0
+
+This version of Campbell Cache used [Binford slf4j](https://www.npmjs.com/package/binford-slf4j) for logging (https://github.com/ivanplenty/binford-slf4j).
 
 If you wish to see some logging output from cambell cache, you need to set up once the follow (create a separate file and require it):
 

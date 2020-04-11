@@ -1,4 +1,5 @@
 const Logging = require('./testlogging');
+Logging.initialize()
 var assert = require('assert');
 
 var proxyquire = require('proxyquire');
@@ -56,7 +57,6 @@ describe('ObservableInMemory', function() {
 
 
         setTimeout(() => {
-          console.log("lkjlkjlkj");
           assert.equal(3,observerCount);
           done();
         },2000);

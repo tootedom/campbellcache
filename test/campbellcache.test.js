@@ -1,4 +1,5 @@
 const Logging = require('./testlogging');
+Logging.initialize()
 var chai = require('chai');
 var expect = chai.expect;
 const Rx = require('rxjs');
@@ -15,7 +16,6 @@ jswiremocklib = require('jswiremock'), jswiremock = jswiremocklib.jswiremock, st
 var assert = require('assert');
 var proxyquire = require('proxyquire');
 var CampbellCache = require('../lib/campbellcache');
-var CampbellCache2 = require('../lib/campbellcache');
 var fs = require('fs');
 
 var AutodiscoveryServer = require('./autodiscovery-server');
@@ -79,9 +79,14 @@ describe('CampbellCache', function() {
       autodiscovery : true,
       autodiscovery_url : "127.0.0.1:11211",
       autodiscovery_intervalInMs: 200,
+      autodiscovery_oldClientTTL: 500,
       metrics : {
         registries : reporter,
         prefix : "org.greencheek."
+      },
+      memcached_opts : {
+        remove: true,
+        failures: 0
       }
     })
 

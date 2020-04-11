@@ -1,4 +1,5 @@
 const Logging = require('./testlogging');
+Logging.initialize()
 const chai = require('chai');
 const expect = chai.expect;
 const assert = require('assert');

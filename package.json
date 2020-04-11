@@ -1,6 +1,6 @@
 {
   "name": "campbellcache",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Implementation of Herdcache for Javascript",
   "main": "index.js",
   "scripts": {
@@ -23,25 +23,25 @@
   },
   "homepage": "https://github.com/tootedom/campbellcache#readme",
   "devDependencies": {
-    "binford-logger": "0.0.3",
     "chai": "^3.5.0",
-    "eslint": "^3.19.0",
+    "eslint": "^4.18.2",
     "find-free-port": "^1.0.2",
-    "jswiremock": "^0.3.5",
+    "jswiremock": "^0.3.6",
     "memcached-mock": "^0.1.0",
-    "mocha": "^3.4.1",
+    "mocha": "^7.1.1",
     "proxyquire": "^1.8.0",
-    "request": "^2.81.0",
-    "request-promise": "^4.2.1",
-    "memcache-server-stream": "1.0.0"
+    "request": "2.88.2",
+    "request-promise": "^4.2.5",
+    "memcache-server-stream": "1.0.0",
+    "winston": "^3.2.1"
   },
   "dependencies": {
-    "binford-slf4j": "0.0.1",
     "ecad": "^0.2.0",
     "memcached": "^2.2.2",
     "metrics": "^0.1.11",
     "optional-js": "^1.2.1",
     "rxjs": "^5.4.2",
-    "caching-map": "1.0.2"
+    "caching-map": "1.0.2",
+    "util": "0.12.2"
   }
 }

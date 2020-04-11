@@ -1,4 +1,5 @@
 const Logging = require('./testlogging');
+Logging.initialize();
 var chai = require('chai');
 var expect = chai.expect;
 const Rx = require('rxjs');
@@ -47,15 +48,23 @@ describe('CampbellCache-LargeItems', function() {
       campbellcache = new CampbellCache2({
         autodiscovery : false,
         hosts : ["127.0.0.1:"+mockMemcachedServerPort],
-        autodiscovery_intervalInMs: 200
+        autodiscovery_intervalInMs: 200,
+        autodiscovery_oldClientTTL: 1000,
+        memcached_opts : {
+          remove: true,
+          failures: 0
+        }
       })
 
       campbellcacheWithLargeItems = new CampbellCache2({
         autodiscovery : false,
         hosts : ["127.0.0.1:"+mockMemcachedServerPort],
         autodiscovery_intervalInMs: 200,
+        autodiscovery_oldClientTTL: 1000,
         memcached_opts : {
-            maxValue : 1048576*3
+            maxValue : 1048576*3,
+            remove: true,
+            failures: 0
         }
       });
 
@@ -64,24 +73,31 @@ describe('CampbellCache-LargeItems', function() {
   });
 
   afterEach(function() {
-    campbellcache.flush(function() { 
+    campbellcache.flush(function(err, res) { 
       console.log("flushing");
+      console.log(err);
+      console.log(res);
     });
 
     try {
+      console.log("shutting down campbellcache")
       campbellcache.shutdown();
+      console.log("shut down campbellcache")
     } catch(err) {
       console.log("cache shutdown err:" + err);
     }
 
     try {
+      console.log("shutting down campbellcacheWithLargeItems")
       campbellcacheWithLargeItems.shutdown();
+      console.log("shut down campbellcacheWithLargeItems")
     } catch(err) {
       console.log("cache shutdown err:" + err);
     }
 
 
     try {
+      console.log("shutting down memcached server")
       server.close(function() {
         console.log("closed");
       });

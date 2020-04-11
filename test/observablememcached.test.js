@@ -63,7 +63,6 @@ describe('ObservableMemcached', function() {
 
 
         setTimeout(() => {
-          console.log("lkjlkjlkj");
           assert.equal(1,memcachedMock.prototype.getCalled());
           assert.equal(3,observerCount);
           done();

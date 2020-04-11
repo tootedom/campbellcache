@@ -1,4 +1,5 @@
 const Logging = require('./testlogging');
+Logging.initialize();
 const dns = require('dns');
 var chai = require('chai');
 var expect = chai.expect;
@@ -8,12 +9,12 @@ const nativeDnsLookup = dns.lookup;
 
 
 var assert = require('assert');
-var AutodiscoveryServer = require('./autodiscovery-server');
 var AutoDiscovery = require('../lib/dnsautodiscovery');
 var fs = require('fs');
 
 
 describe('autodiscovery', function() {
+
     process.env.EC_CONFIG_URL = "";
     var testServer;
     var Autodiscovery;

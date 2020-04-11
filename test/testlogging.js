@@ -1,28 +1,23 @@
-var slf4j = require('binford-slf4j');
-var binfordLogger = require('binford-logger');
+const winston = require('winston');
+const CampbellCache = require('../lib/campbellcache');
 
-slf4j.setLoggerFactory(binfordLogger.loggerFactory);
-slf4j.loadConfig({
-    level: slf4j.LEVELS.DEBUG,
-    appenders:
-        [{
-            appender: binfordLogger.getDefaultAppender()
-        }]
+const logger = winston.createLogger({
+    level: 'debug'
+
 });
+logger.add(new winston.transports.Console({
+    format: winston.format.combine(
+        winston.format.splat(),
+        winston.format.simple()
+    ),
+}));
 
-// var configNotInitialised = true;
-// function Logging() {
-//     if(configNotInitialised) {
-//         slf4j.setLoggerFactory(binfordLogger.loggerFactory);
-//         slf4j.loadConfig({
-//             level: slf4j.LEVELS.DEBUG,
-//             appenders:
-//                 [{
-//                     appender: binfordLogger.getDefaultAppender()
-//                 }]
-//         });
-//         configNotInitialised = false;
-//     }
-// }
-
-// module.exports = Logging;
+var initialized = false;
+module.exports.initialize = function() {
+    if (!initialized) {
+        initialized = true;
+        CampbellCache.logEmitter.on('campbell-cache-log-event', function(level, message, ...args) {
+            logger.log(level, message, ...args)
+        });
+    }
+}
