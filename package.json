@@ -28,7 +28,7 @@
     "find-free-port": "^1.0.2",
     "jswiremock": "^0.3.6",
     "memcached-mock": "^0.1.0",
-    "mocha": "^7.1.1",
+    "mocha": "^10.2.0",
     "proxyquire": "^1.8.0",
     "request": "2.88.2",
     "request-promise": "^4.2.5",
